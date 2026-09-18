@@ -1,5 +1,5 @@
 
-"uswe client";
+"use client";
 import { useState } from "react";
 export default function Companies() {
 const [showForm, setShowForm] = useState(false);
