@@ -2,8 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
+import { supabase } from "../../lib/supabaseClient";
 export default function Shipments() {
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
