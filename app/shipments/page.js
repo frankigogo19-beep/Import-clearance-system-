@@ -1,13 +1,13 @@
-
-
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function Shipments() {
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
+  const [shipments, setShipments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const emptyForm = {
     shipment_no: "",
@@ -17,7 +17,7 @@ export default function Shipments() {
     customer_id: "",
     product_description: "",
     quantity: "",
-    unit: "",
+    unity: "",
     weight: "",
     weight_unit: "",
     container_no: "",
@@ -36,6 +36,29 @@ export default function Shipments() {
   };
 
   const [formData, setFormData] = useState(emptyForm);
+
+  // Get shipments from Supabase
+  const loadShipments = async () => {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("shipments")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setMessage("Error loading shipments: " + error.message);
+    } else {
+      setShipments(data || []);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadShipments();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -64,7 +87,7 @@ export default function Shipments() {
         quantity: formData.quantity
           ? Number(formData.quantity)
           : null,
-        unit: formData.unit || null,
+        unity: formData.unity || null,
         weight: formData.weight
           ? Number(formData.weight)
           : null,
@@ -93,7 +116,11 @@ export default function Shipments() {
     }
 
     setMessage("Shipment saved successfully.");
+
     setFormData(emptyForm);
+
+    // Reload shipments immediately
+    await loadShipments();
 
     setTimeout(() => {
       setShowForm(false);
@@ -131,12 +158,15 @@ export default function Shipments() {
         margin: "0 auto",
       }}
     >
+      {/* PAGE HEADER */}
+
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: "25px",
+          gap: "15px",
         }}
       >
         <div>
@@ -178,6 +208,8 @@ export default function Shipments() {
         )}
       </div>
 
+      {/* FORM */}
+
       {showForm && (
         <section
           style={{
@@ -185,6 +217,7 @@ export default function Shipments() {
             border: "1px solid #e5e7eb",
             borderRadius: "12px",
             padding: "25px",
+            marginBottom: "30px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
           }}
         >
@@ -197,7 +230,12 @@ export default function Shipments() {
             }}
           >
             <div>
-              <h2 style={{ margin: 0, fontSize: "21px" }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "21px",
+                }}
+              >
                 Shipment Details
               </h2>
 
@@ -258,7 +296,9 @@ export default function Shipments() {
               }}
             >
               <div style={fieldStyle}>
-                <label style={labelStyle}>Shipment Number *</label>
+                <label style={labelStyle}>
+                  Shipment Number *
+                </label>
                 <input
                   style={inputStyle}
                   name="shipment_no"
@@ -314,7 +354,13 @@ export default function Shipments() {
               </div>
             </div>
 
-            <hr style={{ margin: "15px 0 25px", border: 0, borderTop: "1px solid #e5e7eb" }} />
+            <hr
+              style={{
+                margin: "15px 0 25px",
+                border: 0,
+                borderTop: "1px solid #e5e7eb",
+              }}
+            />
 
             <h3>Cargo Information</h3>
 
@@ -327,7 +373,9 @@ export default function Shipments() {
               }}
             >
               <div style={fieldStyle}>
-                <label style={labelStyle}>Product Description</label>
+                <label style={labelStyle}>
+                  Product Description
+                </label>
                 <input
                   style={inputStyle}
                   name="product_description"
@@ -353,9 +401,9 @@ export default function Shipments() {
                 <label style={labelStyle}>Unit</label>
                 <input
                   style={inputStyle}
-                  name="unit"
+                  name="unity"
                   placeholder="e.g. Cartons, Bags, Pieces"
-                  value={formData.unit}
+                  value={formData.unity}
                   onChange={handleChange}
                 />
               </div>
@@ -385,7 +433,13 @@ export default function Shipments() {
               </div>
             </div>
 
-            <hr style={{ margin: "15px 0 25px", border: 0, borderTop: "1px solid #e5e7eb" }} />
+            <hr
+              style={{
+                margin: "15px 0 25px",
+                border: 0,
+                borderTop: "1px solid #e5e7eb",
+              }}
+            />
 
             <h3>Shipping Information</h3>
 
@@ -398,7 +452,9 @@ export default function Shipments() {
               }}
             >
               <div style={fieldStyle}>
-                <label style={labelStyle}>Container Number</label>
+                <label style={labelStyle}>
+                  Container Number
+                </label>
                 <input
                   style={inputStyle}
                   name="container_no"
@@ -409,7 +465,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Bill of Lading</label>
+                <label style={labelStyle}>
+                  Bill of Lading
+                </label>
                 <input
                   style={inputStyle}
                   name="bl_no"
@@ -420,7 +478,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Vessel / Flight</label>
+                <label style={labelStyle}>
+                  Vessel / Flight
+                </label>
                 <input
                   style={inputStyle}
                   name="vessel_flight"
@@ -431,7 +491,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Port of Loading</label>
+                <label style={labelStyle}>
+                  Port of Loading
+                </label>
                 <input
                   style={inputStyle}
                   name="port_of_loading"
@@ -442,7 +504,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Destination Port</label>
+                <label style={labelStyle}>
+                  Destination Port
+                </label>
                 <input
                   style={inputStyle}
                   name="destination_port"
@@ -475,7 +539,13 @@ export default function Shipments() {
               </div>
             </div>
 
-            <hr style={{ margin: "15px 0 25px", border: 0, borderTop: "1px solid #e5e7eb" }} />
+            <hr
+              style={{
+                margin: "15px 0 25px",
+                border: 0,
+                borderTop: "1px solid #e5e7eb",
+              }}
+            />
 
             <h3>Clearance & Delivery</h3>
 
@@ -488,7 +558,9 @@ export default function Shipments() {
               }}
             >
               <div style={fieldStyle}>
-                <label style={labelStyle}>Current Location</label>
+                <label style={labelStyle}>
+                  Current Location
+                </label>
                 <input
                   style={inputStyle}
                   name="current_location"
@@ -515,7 +587,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Assigned Clearing Agent</label>
+                <label style={labelStyle}>
+                  Assigned Clearing Agent
+                </label>
                 <input
                   style={inputStyle}
                   name="assigned_clearing_agent"
@@ -526,7 +600,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Port of Entry</label>
+                <label style={labelStyle}>
+                  Port of Entry
+                </label>
                 <input
                   style={inputStyle}
                   name="port_of_entry"
@@ -537,7 +613,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Arrival Date</label>
+                <label style={labelStyle}>
+                  Arrival Date
+                </label>
                 <input
                   style={inputStyle}
                   type="date"
@@ -548,7 +626,9 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>Clearance Date</label>
+                <label style={labelStyle}>
+                  Clearance Date
+                </label>
                 <input
                   style={inputStyle}
                   type="date"
@@ -591,7 +671,6 @@ export default function Shipments() {
                   borderRadius: "8px",
                   padding: "12px 22px",
                   cursor: "pointer",
-                  fontWeight: "600",
                 }}
               >
                 Cancel
@@ -600,6 +679,151 @@ export default function Shipments() {
           </form>
         </section>
       )}
+
+      {/* SHIPMENTS LIST */}
+
+      <section
+        style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "12px",
+          padding: "25px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "21px",
+              }}
+            >
+              Shipments List
+            </h2>
+
+            <p
+              style={{
+                marginTop: "5px",
+                color: "#6b7280",
+                fontSize: "14px",
+              }}
+            >
+              Saved shipments and import cargo.
+            </p>
+          </div>
+
+          <button
+            onClick={loadShipments}
+            style={{
+              background: "#f3f4f6",
+              border: "none",
+              borderRadius: "7px",
+              padding: "9px 14px",
+              cursor: "pointer",
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+
+        {loading ? (
+          <p>Loading shipments...</p>
+        ) : shipments.length === 0 ? (
+          <p style={{ color: "#6b7280" }}>
+            No shipments found.
+          </p>
+        ) : (
+          <div
+            style={{
+              overflowX: "auto",
+            }}
+          >
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                minWidth: "750px",
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    background: "#f9fafb",
+                    textAlign: "left",
+                  }}
+                >
+                  <th style={{ padding: "12px" }}>
+                    Shipment No.
+                  </th>
+                  <th style={{ padding: "12px" }}>
+                    Container
+                  </th>
+                  <th style={{ padding: "12px" }}>
+                    B/L
+                  </th>
+                  <th style={{ padding: "12px" }}>
+                    Destination
+                  </th>
+                  <th style={{ padding: "12px" }}>
+                    Status
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {shipments.map((shipment) => (
+                  <tr
+                    key={shipment.id}
+                    style={{
+                      borderTop:
+                        "1px solid #e5e7eb",
+                    }}
+                  >
+                    <td style={{ padding: "12px" }}>
+                      {shipment.shipment_no || "-"}
+                    </td>
+
+                    <td style={{ padding: "12px" }}>
+                      {shipment.container_no || "-"}
+                    </td>
+
+                    <td style={{ padding: "12px" }}>
+                      {shipment.bl_no || "-"}
+                    </td>
+
+                    <td style={{ padding: "12px" }}>
+                      {shipment.destination_port || "-"}
+                    </td>
+
+                    <td style={{ padding: "12px" }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "5px 9px",
+                          borderRadius: "999px",
+                          background: "#f3f4f6",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        {shipment.status || "Pending"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </main>
   );
-}
+      }
