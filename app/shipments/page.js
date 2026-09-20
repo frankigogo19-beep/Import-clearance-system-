@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -32,12 +31,16 @@ const emptyForm = {
 
 export default function Shipments() {
   const [showForm, setShowForm] = useState(false);
+  const [showView, setShowView] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
   const [message, setMessage] = useState("");
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState(emptyForm);
+  const [selectedShipment, setSelectedShipment] = useState(null);
 
   useEffect(() => {
     fetchShipments();
@@ -69,6 +72,56 @@ export default function Shipments() {
     }));
   }
 
+  function openAddForm() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setMessage("");
+    setShowView(false);
+    setShowForm(true);
+  }
+
+  function openEditForm(shipment) {
+    setEditingId(shipment.id);
+
+    setForm({
+      shipment_no: shipment.shipment_no || "",
+      company_id: shipment.company_id || "",
+      order_id: shipment.order_id || "",
+      supplier_id: shipment.supplier_id || "",
+      customer_id: shipment.customer_id || "",
+      product_description: shipment.product_description || "",
+      quantity: shipment.quantity || "",
+      unity: shipment.unity || "",
+      weight: shipment.weight || "",
+      weight_unit: shipment.weight_unit || "",
+      container_no: shipment.container_no || "",
+      bl_no: shipment.bl_no || "",
+      vessel_flight: shipment.vessel_flight || "",
+      port_of_loading: shipment.port_of_loading || "",
+      destination_port: shipment.destination_port || "",
+      etd: shipment.etd || "",
+      eta: shipment.eta || "",
+      current_location: shipment.current_location || "",
+      status: shipment.status || "Pending",
+      assigned_clearing_agent:
+        shipment.assigned_clearing_agent || "",
+      port_of_entry: shipment.port_of_entry || "",
+      arrival_date: shipment.arrival_date || "",
+      clearance_date: shipment.clearance_date || "",
+    });
+
+    setShowView(false);
+    setMessage("");
+    setShowForm(true);
+  }
+
+  function openView(shipment) {
+    setSelectedShipment(shipment);
+    setShowForm(false);
+    setShowView(true);
+    setMessage("");
+  }
+
   async function saveShipment(e) {
     e.preventDefault();
 
@@ -77,15 +130,32 @@ export default function Shipments() {
 
     const shipmentData = {
       shipment_no: form.shipment_no || null,
-      company_id: form.company_id ? Number(form.company_id) : null,
-      order_id: form.order_id ? Number(form.order_id) : null,
-      supplier_id: form.supplier_id ? Number(form.supplier_id) : null,
-      customer_id: form.customer_id ? Number(form.customer_id) : null,
+      company_id: form.company_id
+        ? Number(form.company_id)
+        : null,
+      order_id: form.order_id
+        ? Number(form.order_id)
+        : null,
+      supplier_id: form.supplier_id
+        ? Number(form.supplier_id)
+        : null,
+      customer_id: form.customer_id
+        ? Number(form.customer_id)
+        : null,
 
-      product_description: form.product_description || null,
-      quantity: form.quantity ? Number(form.quantity) : null,
+      product_description:
+        form.product_description || null,
+
+      quantity: form.quantity
+        ? Number(form.quantity)
+        : null,
+
       unity: form.unity || null,
-      weight: form.weight ? Number(form.weight) : null,
+
+      weight: form.weight
+        ? Number(form.weight)
+        : null,
+
       weight_unit: form.weight_unit || null,
 
       container_no: form.container_no || null,
@@ -96,31 +166,57 @@ export default function Shipments() {
 
       etd: form.etd || null,
       eta: form.eta || null,
-      current_location: form.current_location || null,
+      current_location:
+        form.current_location || null,
 
       status: form.status || "Pending",
 
       assigned_clearing_agent:
         form.assigned_clearing_agent || null,
 
-      port_of_entry: form.port_of_entry || null,
-      arrival_date: form.arrival_date || null,
-      clearance_date: form.clearance_date || null,
+      port_of_entry:
+        form.port_of_entry || null,
+
+      arrival_date:
+        form.arrival_date || null,
+
+      clearance_date:
+        form.clearance_date || null,
     };
 
-    const { error } = await supabase
-      .from("shipments")
-      .insert([shipmentData]);
+    let error;
+
+    if (editingId) {
+      const result = await supabase
+        .from("shipments")
+        .update(shipmentData)
+        .eq("id", editingId);
+
+      error = result.error;
+    } else {
+      const result = await supabase
+        .from("shipments")
+        .insert([shipmentData]);
+
+      error = result.error;
+    }
 
     if (error) {
-      setMessage("Error saving shipment: " + error.message);
+      setMessage(
+        "Error saving shipment: " + error.message
+      );
       setSaving(false);
       return;
     }
 
-    setMessage("Shipment saved successfully.");
+    setMessage(
+      editingId
+        ? "Shipment updated successfully."
+        : "Shipment saved successfully."
+    );
 
     setForm(emptyForm);
+    setEditingId(null);
     setShowForm(false);
 
     await fetchShipments();
@@ -133,17 +229,63 @@ export default function Shipments() {
 
     const { error } = await supabase
       .from("shipments")
-      .update({ status: newStatus })
+      .update({
+        status: newStatus,
+      })
       .eq("id", id);
 
     if (error) {
-      setMessage("Error updating shipment: " + error.message);
+      setMessage(
+        "Error updating shipment: " +
+          error.message
+      );
       return;
     }
 
     setMessage("Shipment updated successfully.");
 
     await fetchShipments();
+  }
+
+  async function deleteShipment(id) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this shipment?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+
+    const { error } = await supabase
+      .from("shipments")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      setMessage(
+        "Error deleting shipment: " +
+          error.message
+      );
+      return;
+    }
+
+    setMessage("Shipment deleted successfully.");
+
+    setShowView(false);
+    setSelectedShipment(null);
+
+    await fetchShipments();
+  }
+
+  function closePanels() {
+    setShowForm(false);
+    setShowView(false);
+    setEditingId(null);
+    setSelectedShipment(null);
+    setForm(emptyForm);
+    setMessage("");
   }
 
   return (
@@ -165,87 +307,238 @@ export default function Shipments() {
         }}
       >
         <div>
-          <h1 style={{ marginBottom: "8px" }}>Shipments</h1>
+          <h1 style={{ marginBottom: "8px" }}>
+            Shipments
+          </h1>
 
-          <p style={{ margin: 0, color: "#666" }}>
+          <p
+            style={{
+              margin: 0,
+              color: "#666",
+            }}
+          >
             Manage shipments and import cargo.
           </p>
         </div>
 
         <button
-          onClick={() => {
-            setShowForm(true);
-            setMessage("");
-          }}
-          style={{
-            padding: "12px 20px",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
-            background: "#111827",
-            color: "white",
-            fontWeight: "600",
-          }}
+          onClick={openAddForm}
+          style={primaryButton}
         >
           + Add Shipment
         </button>
       </div>
 
       {message && (
-        <div
-          style={{
-            marginBottom: "20px",
-            padding: "12px 15px",
-            borderRadius: "8px",
-            background: "#f3f4f6",
-            color: "#111827",
-          }}
-        >
+        <div style={messageStyle}>
           {message}
         </div>
       )}
 
-      {showForm && (
-        <div
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: "12px",
-            padding: "25px",
-            marginBottom: "30px",
-            background: "white",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "25px",
-            }}
-          >
+      {showView && selectedShipment && (
+        <div style={panelStyle}>
+          <div style={panelHeaderStyle}>
             <div>
               <h2 style={{ marginBottom: "5px" }}>
                 Shipment Details
               </h2>
 
-              <p style={{ margin: 0, color: "#666" }}>
-                Enter shipment and cargo information.
+              <p
+                style={{
+                  margin: 0,
+                  color: "#666",
+                }}
+              >
+                Complete shipment information
+              </p>
+            </div>
+
+            <button
+              onClick={closePanels}
+              style={closeButton}
+            >
+              Close
+            </button>
+          </div>
+
+          <div style={detailsGrid}>
+            <Detail
+              label="Shipment Number"
+              value={selectedShipment.shipment_no}
+            />
+
+            <Detail
+              label="Company ID"
+              value={selectedShipment.company_id}
+            />
+
+            <Detail
+              label="Order ID"
+              value={selectedShipment.order_id}
+            />
+
+            <Detail
+              label="Supplier ID"
+              value={selectedShipment.supplier_id}
+            />
+
+            <Detail
+              label="Customer ID"
+              value={selectedShipment.customer_id}
+            />
+
+            <Detail
+              label="Product Description"
+              value={
+                selectedShipment.product_description
+              }
+            />
+
+            <Detail
+              label="Quantity"
+              value={selectedShipment.quantity}
+            />
+
+            <Detail
+              label="Unit"
+              value={selectedShipment.unity}
+            />
+
+            <Detail
+              label="Weight"
+              value={selectedShipment.weight}
+            />
+
+            <Detail
+              label="Weight Unit"
+              value={selectedShipment.weight_unit}
+            />
+
+            <Detail
+              label="Container Number"
+              value={selectedShipment.container_no}
+            />
+
+            <Detail
+              label="Bill of Lading"
+              value={selectedShipment.bl_no}
+            />
+
+            <Detail
+              label="Vessel / Flight"
+              value={selectedShipment.vessel_flight}
+            />
+
+            <Detail
+              label="Port of Loading"
+              value={selectedShipment.port_of_loading}
+            />
+
+            <Detail
+              label="Destination Port"
+              value={selectedShipment.destination_port}
+            />
+
+            <Detail
+              label="ETD"
+              value={selectedShipment.etd}
+            />
+
+            <Detail
+              label="ETA"
+              value={selectedShipment.eta}
+            />
+
+            <Detail
+              label="Current Location"
+              value={selectedShipment.current_location}
+            />
+
+            <Detail
+              label="Status"
+              value={selectedShipment.status}
+            />
+
+            <Detail
+              label="Clearing Agent"
+              value={
+                selectedShipment.assigned_clearing_agent
+              }
+            />
+
+            <Detail
+              label="Port of Entry"
+              value={selectedShipment.port_of_entry}
+            />
+
+            <Detail
+              label="Arrival Date"
+              value={selectedShipment.arrival_date}
+            />
+
+            <Detail
+              label="Clearance Date"
+              value={
+                selectedShipment.clearance_date
+              }
+            />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              marginTop: "25px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              onClick={() =>
+                openEditForm(selectedShipment)
+              }
+              style={editButton}
+            >
+              Edit Shipment
+            </button>
+
+            <button
+              onClick={() =>
+                deleteShipment(selectedShipment.id)
+              }
+              style={deleteButton}
+            >
+              Delete Shipment
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <div style={panelStyle}>
+          <div style={panelHeaderStyle}>
+            <div>
+              <h2 style={{ marginBottom: "5px" }}>
+                {editingId
+                  ? "Edit Shipment"
+                  : "Shipment Details"}
+              </h2>
+
+              <p
+                style={{
+                  margin: 0,
+                  color: "#666",
+                }}
+              >
+                {editingId
+                  ? "Update shipment information."
+                  : "Enter shipment and cargo information."}
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => {
-                setShowForm(false);
-                setForm(emptyForm);
-                setMessage("");
-              }}
-              style={{
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                fontSize: "16px",
-              }}
+              onClick={closePanels}
+              style={closeButton}
             >
               Close
             </button>
@@ -403,7 +696,9 @@ export default function Shipments() {
               />
 
               <div>
-                <label style={labelStyle}>Status</label>
+                <label style={labelStyle}>
+                  Status
+                </label>
 
                 <select
                   name="status"
@@ -411,11 +706,25 @@ export default function Shipments() {
                   onChange={handleChange}
                   style={inputStyle}
                 >
-                  <option value="Pending">Pending</option>
-                  <option value="In Transit">In Transit</option>
-                  <option value="Arrived">Arrived</option>
-                  <option value="Cleared">Cleared</option>
-                  <option value="Delivered">Delivered</option>
+                  <option value="Pending">
+                    Pending
+                  </option>
+
+                  <option value="In Transit">
+                    In Transit
+                  </option>
+
+                  <option value="Arrived">
+                    Arrived
+                  </option>
+
+                  <option value="Cleared">
+                    Cleared
+                  </option>
+
+                  <option value="Delivered">
+                    Delivered
+                  </option>
                 </select>
               </div>
 
@@ -460,32 +769,19 @@ export default function Shipments() {
               <button
                 type="submit"
                 disabled={saving}
-                style={{
-                  padding: "12px 25px",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: "#111827",
-                  color: "white",
-                  cursor: saving ? "not-allowed" : "pointer",
-                  fontWeight: "600",
-                }}
+                style={primaryButton}
               >
-                {saving ? "Saving..." : "Save Shipment"}
+                {saving
+                  ? "Saving..."
+                  : editingId
+                  ? "Update Shipment"
+                  : "Save Shipment"}
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setForm(emptyForm);
-                }}
-                style={{
-                  padding: "12px 25px",
-                  borderRadius: "8px",
-                  border: "1px solid #ddd",
-                  background: "white",
-                  cursor: "pointer",
-                }}
+                onClick={closePanels}
+                style={secondaryButton}
               >
                 Cancel
               </button>
@@ -507,17 +803,34 @@ export default function Shipments() {
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                minWidth: "900px",
+                minWidth: "950px",
               }}
             >
               <thead>
                 <tr>
-                  <th style={thStyle}>Shipment No.</th>
-                  <th style={thStyle}>Container</th>
-                  <th style={thStyle}>Bill of Lading</th>
-                  <th style={thStyle}>Destination</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Actions</th>
+                  <th style={thStyle}>
+                    Shipment No.
+                  </th>
+
+                  <th style={thStyle}>
+                    Container
+                  </th>
+
+                  <th style={thStyle}>
+                    Bill of Lading
+                  </th>
+
+                  <th style={thStyle}>
+                    Destination
+                  </th>
+
+                  <th style={thStyle}>
+                    Status
+                  </th>
+
+                  <th style={thStyle}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -542,7 +855,10 @@ export default function Shipments() {
 
                     <td style={tdStyle}>
                       <select
-                        value={shipment.status || "Pending"}
+                        value={
+                          shipment.status ||
+                          "Pending"
+                        }
                         onChange={(e) =>
                           updateStatus(
                             shipment.id,
@@ -552,15 +868,26 @@ export default function Shipments() {
                         style={{
                           padding: "7px",
                           borderRadius: "6px",
-                          border: "1px solid #ddd",
+                          border:
+                            "1px solid #ddd",
                         }}
                       >
-                        <option value="Pending">Pending</option>
+                        <option value="Pending">
+                          Pending
+                        </option>
+
                         <option value="In Transit">
                           In Transit
                         </option>
-                        <option value="Arrived">Arrived</option>
-                        <option value="Cleared">Cleared</option>
+
+                        <option value="Arrived">
+                          Arrived
+                        </option>
+
+                        <option value="Cleared">
+                          Cleared
+                        </option>
+
                         <option value="Delivered">
                           Delivered
                         </option>
@@ -568,9 +895,42 @@ export default function Shipments() {
                     </td>
 
                     <td style={tdStyle}>
-                      <span style={{ color: "#666" }}>
-                        Shipment #{shipment.id}
-                      </span>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "7px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <button
+                          onClick={() =>
+                            openView(shipment)
+                          }
+                          style={viewButton}
+                        >
+                          View
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            openEditForm(shipment)
+                          }
+                          style={editButton}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            deleteShipment(
+                              shipment.id
+                            )
+                          }
+                          style={deleteButton}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -593,7 +953,9 @@ function Input({
 }) {
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
+      <label style={labelStyle}>
+        {label}
+      </label>
 
       <input
         name={name}
@@ -607,10 +969,66 @@ function Input({
   );
 }
 
+function Detail({ label, value }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #eee",
+        borderRadius: "8px",
+        padding: "12px",
+        background: "#fafafa",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "13px",
+          color: "#666",
+          marginBottom: "5px",
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          fontWeight: "600",
+          wordBreak: "break-word",
+        }}
+      >
+        {value || "-"}
+      </div>
+    </div>
+  );
+}
+
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(250px, 1fr))",
   gap: "18px",
+};
+
+const detailsGrid = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(230px, 1fr))",
+  gap: "15px",
+};
+
+const panelStyle = {
+  border: "1px solid #ddd",
+  borderRadius: "12px",
+  padding: "25px",
+  marginBottom: "30px",
+  background: "white",
+};
+
+const panelHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "25px",
+  gap: "15px",
 };
 
 const labelStyle = {
@@ -626,6 +1044,66 @@ const inputStyle = {
   border: "1px solid #ccc",
   boxSizing: "border-box",
   background: "white",
+};
+
+const primaryButton = {
+  padding: "12px 20px",
+  borderRadius: "8px",
+  border: "none",
+  cursor: "pointer",
+  background: "#111827",
+  color: "white",
+  fontWeight: "600",
+};
+
+const secondaryButton = {
+  padding: "12px 20px",
+  borderRadius: "8px",
+  border: "1px solid #ddd",
+  background: "white",
+  cursor: "pointer",
+};
+
+const closeButton = {
+  padding: "8px 15px",
+  borderRadius: "7px",
+  border: "1px solid #ddd",
+  background: "white",
+  cursor: "pointer",
+};
+
+const viewButton = {
+  padding: "7px 12px",
+  borderRadius: "6px",
+  border: "1px solid #ddd",
+  background: "white",
+  cursor: "pointer",
+};
+
+const editButton = {
+  padding: "7px 12px",
+  borderRadius: "6px",
+  border: "none",
+  background: "#e5e7eb",
+  color: "#111827",
+  cursor: "pointer",
+};
+
+const deleteButton = {
+  padding: "7px 12px",
+  borderRadius: "6px",
+  border: "none",
+  background: "#111827",
+  color: "white",
+  cursor: "pointer",
+};
+
+const messageStyle = {
+  marginBottom: "20px",
+  padding: "12px 15px",
+  borderRadius: "8px",
+  background: "#f3f4f6",
+  color: "#111827",
 };
 
 const thStyle = {
