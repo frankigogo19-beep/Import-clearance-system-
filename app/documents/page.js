@@ -1,4 +1,5 @@
 
+            
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,6 +7,7 @@ import { supabase } from "../../lib/supabaseClient";
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState([]);
+  const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -20,6 +22,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     loadDocuments();
+    loadShipments();
   }, []);
 
   async function loadDocuments() {
@@ -37,6 +40,20 @@ export default function DocumentsPage() {
     }
 
     setLoading(false);
+  }
+
+  async function loadShipments() {
+    const { data, error } = await supabase
+      .from("shipments")
+      .select("id, shipment_no")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage("Error loading shipments: " + error.message);
+      return;
+    }
+
+    setShipments(data || []);
   }
 
   function handleChange(e) {
@@ -60,7 +77,9 @@ export default function DocumentsPage() {
         document_name: form.document_name,
         document_type: form.document_type || null,
         document_number: form.document_number || null,
-        shipment_id: form.shipment_id || null,
+        shipment_id: form.shipment_id
+          ? Number(form.shipment_id)
+          : null,
         description: form.description || null,
         status: form.status,
       },
@@ -85,8 +104,22 @@ export default function DocumentsPage() {
     loadDocuments();
   }
 
+  function getShipmentNumber(shipmentId) {
+    const shipment = shipments.find(
+      (item) => String(item.id) === String(shipmentId)
+    );
+
+    return shipment?.shipment_no || shipmentId || "-";
+  }
+
   return (
-    <main style={{ padding: "30px", maxWidth: "1200px", margin: "auto" }}>
+    <main
+      style={{
+        padding: "30px",
+        maxWidth: "1200px",
+        margin: "auto",
+      }}
+    >
       <h1>Documents</h1>
 
       <p>Manage import, shipping and clearance documents.</p>
@@ -137,14 +170,22 @@ export default function DocumentsPage() {
                 style={inputStyle}
               >
                 <option value="">Select Type</option>
-                <option value="Commercial Invoice">Commercial Invoice</option>
+                <option value="Commercial Invoice">
+                  Commercial Invoice
+                </option>
                 <option value="Packing List">Packing List</option>
-                <option value="Bill of Lading">Bill of Lading</option>
+                <option value="Bill of Lading">
+                  Bill of Lading
+                </option>
                 <option value="Certificate of Origin">
                   Certificate of Origin
                 </option>
-                <option value="Import Declaration">Import Declaration</option>
-                <option value="Delivery Order">Delivery Order</option>
+                <option value="Import Declaration">
+                  Import Declaration
+                </option>
+                <option value="Delivery Order">
+                  Delivery Order
+                </option>
                 <option value="Authorization Letter">
                   Authorization Letter
                 </option>
@@ -164,14 +205,24 @@ export default function DocumentsPage() {
             </label>
 
             <label>
-              Shipment ID
-              <input
+              Shipment
+              <select
                 name="shipment_id"
                 value={form.shipment_id}
                 onChange={handleChange}
-                placeholder="Enter shipment ID"
                 style={inputStyle}
-              />
+              >
+                <option value="">Select Shipment</option>
+
+                {shipments.map((shipment) => (
+                  <option
+                    key={shipment.id}
+                    value={shipment.id}
+                  >
+                    {shipment.shipment_no || `Shipment #${shipment.id}`}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
@@ -246,11 +297,25 @@ export default function DocumentsPage() {
               <tbody>
                 {documents.map((doc) => (
                   <tr key={doc.id}>
-                    <td style={tdStyle}>{doc.document_name || "-"}</td>
-                    <td style={tdStyle}>{doc.document_type || "-"}</td>
-                    <td style={tdStyle}>{doc.document_number || "-"}</td>
-                    <td style={tdStyle}>{doc.shipment_id || "-"}</td>
-                    <td style={tdStyle}>{doc.status || "-"}</td>
+                    <td style={tdStyle}>
+                      {doc.document_name || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {doc.document_type || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {doc.document_number || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {getShipmentNumber(doc.shipment_id)}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {doc.status || "-"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -282,3 +347,4 @@ const tdStyle = {
   padding: "12px",
   borderBottom: "1px solid #ddd",
 };
+
