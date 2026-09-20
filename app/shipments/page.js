@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useState } from "react";
@@ -15,7 +17,7 @@ export default function Shipments() {
     customer_id: "",
     product_description: "",
     quantity: "",
-    unity: "",
+    unit: "",
     weight: "",
     weight_unit: "",
     container_no: "",
@@ -62,7 +64,7 @@ export default function Shipments() {
         quantity: formData.quantity
           ? Number(formData.quantity)
           : null,
-        unity: formData.unity || null,
+        unit: formData.unit || null,
         weight: formData.weight
           ? Number(formData.weight)
           : null,
@@ -195,12 +197,7 @@ export default function Shipments() {
             }}
           >
             <div>
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "21px",
-                }}
-              >
+              <h2 style={{ margin: 0, fontSize: "21px" }}>
                 Shipment Details
               </h2>
 
@@ -356,9 +353,9 @@ export default function Shipments() {
                 <label style={labelStyle}>Unit</label>
                 <input
                   style={inputStyle}
-                  name="unity"
+                  name="unit"
                   placeholder="e.g. Cartons, Bags, Pieces"
-                  value={formData.unity}
+                  value={formData.unit}
                   onChange={handleChange}
                 />
               </div>
@@ -518,9 +515,7 @@ export default function Shipments() {
               </div>
 
               <div style={fieldStyle}>
-                <label style={labelStyle}>
-                  Assigned Clearing Agent
-                </label>
+                <label style={labelStyle}>Assigned Clearing Agent</label>
                 <input
                   style={inputStyle}
                   name="assigned_clearing_agent"
@@ -596,6 +591,7 @@ export default function Shipments() {
                   borderRadius: "8px",
                   padding: "12px 22px",
                   cursor: "pointer",
+                  fontWeight: "600",
                 }}
               >
                 Cancel
@@ -606,4 +602,4 @@ export default function Shipments() {
       )}
     </main>
   );
-    }
+}
