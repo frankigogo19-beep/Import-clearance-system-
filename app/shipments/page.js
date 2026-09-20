@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -30,33 +31,25 @@ const emptyForm = {
 };
 
 export default function Shipments() {
-  const [shipments, setShipments] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-
   const [showForm, setShowForm] = useState(false);
-  const [showView, setShowView] = useState(false);
-
-  const [editingId, setEditingId] = useState(null);
-  const [selectedShipment, setSelectedShipment] = useState(null);
-
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-
+  const [message, setMessage] = useState("");
+  const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
 
-  // =========================
-  // LOAD SHIPMENTS
-  // =========================
+  const [form, setForm] = useState(emptyForm);
 
-  async function loadShipments() {
+  useEffect(() => {
+    fetchShipments();
+  }, []);
+
+  async function fetchShipments() {
     setLoading(true);
 
     const { data, error } = await supabase
       .from("shipments")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false });
 
     if (error) {
       setMessage("Error loading shipments: " + error.message);
@@ -67,14 +60,6 @@ export default function Shipments() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    loadShipments();
-  }, []);
-
-  // =========================
-  // HANDLE INPUT
-  // =========================
-
   function handleChange(e) {
     const { name, value } = e.target;
 
@@ -84,11 +69,7 @@ export default function Shipments() {
     }));
   }
 
-  // =========================
-  // SAVE / UPDATE
-  // =========================
-
-  async function handleSubmit(e) {
+  async function saveShipment(e) {
     e.preventDefault();
 
     setSaving(true);
@@ -96,215 +77,114 @@ export default function Shipments() {
 
     const shipmentData = {
       shipment_no: form.shipment_no || null,
-      company_id: form.company_id || null,
-      order_id: form.order_id || null,
-      supplier_id: form.supplier_id || null,
-      customer_id: form.customer_id || null,
+      company_id: form.company_id ? Number(form.company_id) : null,
+      order_id: form.order_id ? Number(form.order_id) : null,
+      supplier_id: form.supplier_id ? Number(form.supplier_id) : null,
+      customer_id: form.customer_id ? Number(form.customer_id) : null,
+
       product_description: form.product_description || null,
       quantity: form.quantity ? Number(form.quantity) : null,
       unity: form.unity || null,
       weight: form.weight ? Number(form.weight) : null,
       weight_unit: form.weight_unit || null,
+
       container_no: form.container_no || null,
       bl_no: form.bl_no || null,
       vessel_flight: form.vessel_flight || null,
       port_of_loading: form.port_of_loading || null,
       destination_port: form.destination_port || null,
+
       etd: form.etd || null,
       eta: form.eta || null,
       current_location: form.current_location || null,
-      status: form.status,
+
+      status: form.status || "Pending",
+
       assigned_clearing_agent:
         form.assigned_clearing_agent || null,
+
       port_of_entry: form.port_of_entry || null,
       arrival_date: form.arrival_date || null,
       clearance_date: form.clearance_date || null,
     };
 
-    let result;
+    const { error } = await supabase
+      .from("shipments")
+      .insert([shipmentData]);
 
-    if (editingId) {
-      result = await supabase
-        .from("shipments")
-        .update(shipmentData)
-        .eq("id", editingId);
-    } else {
-      result = await supabase
-        .from("shipments")
-        .insert([shipmentData]);
-    }
-
-    if (result.error) {
-      setMessage(
-        `Error saving shipment: ${result.error.message}`
-      );
+    if (error) {
+      setMessage("Error saving shipment: " + error.message);
       setSaving(false);
       return;
     }
 
-    setMessage(
-      editingId
-        ? "Shipment updated successfully."
-        : "Shipment saved successfully."
-    );
+    setMessage("Shipment saved successfully.");
 
     setForm(emptyForm);
-    setEditingId(null);
     setShowForm(false);
 
-    await loadShipments();
+    await fetchShipments();
 
     setSaving(false);
   }
 
-  // =========================
-  // EDIT
-  // =========================
-
-  function handleEdit(shipment) {
-    setForm({
-      shipment_no: shipment.shipment_no || "",
-      company_id: shipment.company_id || "",
-      order_id: shipment.order_id || "",
-      supplier_id: shipment.supplier_id || "",
-      customer_id: shipment.customer_id || "",
-      product_description: shipment.product_description || "",
-      quantity: shipment.quantity || "",
-      unity: shipment.unity || "",
-      weight: shipment.weight || "",
-      weight_unit: shipment.weight_unit || "",
-      container_no: shipment.container_no || "",
-      bl_no: shipment.bl_no || "",
-      vessel_flight: shipment.vessel_flight || "",
-      port_of_loading: shipment.port_of_loading || "",
-      destination_port: shipment.destination_port || "",
-      etd: shipment.etd || "",
-      eta: shipment.eta || "",
-      current_location: shipment.current_location || "",
-      status: shipment.status || "Pending",
-      assigned_clearing_agent:
-        shipment.assigned_clearing_agent || "",
-      port_of_entry: shipment.port_of_entry || "",
-      arrival_date: shipment.arrival_date || "",
-      clearance_date: shipment.clearance_date || "",
-    });
-
-    setEditingId(shipment.id);
-    setShowView(false);
-    setShowForm(true);
+  async function updateStatus(id, newStatus) {
     setMessage("");
-  }
-
-  // =========================
-  // VIEW
-  // =========================
-
-  function handleView(shipment) {
-    setSelectedShipment(shipment);
-    setShowView(true);
-    setShowForm(false);
-  }
-
-  // =========================
-  // DELETE
-  // =========================
-
-  async function handleDelete(id) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this shipment?"
-    );
-
-    if (!confirmed) return;
 
     const { error } = await supabase
       .from("shipments")
-      .delete()
+      .update({ status: newStatus })
       .eq("id", id);
 
     if (error) {
-      setMessage("Error deleting shipment: " + error.message);
+      setMessage("Error updating shipment: " + error.message);
       return;
     }
 
-    setMessage("Shipment deleted successfully.");
-    await loadShipments();
-  }
+    setMessage("Shipment updated successfully.");
 
-  // =========================
-  // FILTER
-  // =========================
-
-  const filteredShipments = shipments.filter((shipment) => {
-    const searchText = search.toLowerCase();
-
-    const matchesSearch =
-      (shipment.shipment_no || "")
-        .toLowerCase()
-        .includes(searchText) ||
-      (shipment.container_no || "")
-        .toLowerCase()
-        .includes(searchText) ||
-      (shipment.bl_no || "")
-        .toLowerCase()
-        .includes(searchText) ||
-      (shipment.vessel_flight || "")
-        .toLowerCase()
-        .includes(searchText) ||
-      (shipment.product_description || "")
-        .toLowerCase()
-        .includes(searchText);
-
-    const matchesStatus =
-      statusFilter === "All" ||
-      shipment.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  // =========================
-  // FORM FIELD
-  // =========================
-
-  function Field({
-    label,
-    name,
-    type = "text",
-    required = false,
-  }) {
-    return (
-      <div className="field">
-        <label>
-          {label}
-          {required && " *"}
-        </label>
-
-        <input
-          type={type}
-          name={name}
-          value={form[name]}
-          onChange={handleChange}
-          required={required}
-        />
-      </div>
-    );
+    await fetchShipments();
   }
 
   return (
-    <main className="page">
-      <div className="header">
+    <main
+      style={{
+        padding: "30px",
+        maxWidth: "1400px",
+        margin: "0 auto",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "25px",
+          gap: "15px",
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <h1>Shipments</h1>
-          <p>Manage shipments and import cargo.</p>
+          <h1 style={{ marginBottom: "8px" }}>Shipments</h1>
+
+          <p style={{ margin: 0, color: "#666" }}>
+            Manage shipments and import cargo.
+          </p>
         </div>
 
         <button
-          className="primary"
           onClick={() => {
-            setForm(emptyForm);
-            setEditingId(null);
             setShowForm(true);
-            setShowView(false);
             setMessage("");
+          }}
+          style={{
+            padding: "12px 20px",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+            background: "#111827",
+            color: "white",
+            fontWeight: "600",
           }}
         >
           + Add Shipment
@@ -312,581 +192,452 @@ export default function Shipments() {
       </div>
 
       {message && (
-        <div className="message">
+        <div
+          style={{
+            marginBottom: "20px",
+            padding: "12px 15px",
+            borderRadius: "8px",
+            background: "#f3f4f6",
+            color: "#111827",
+          }}
+        >
           {message}
         </div>
       )}
 
-      {/* SEARCH AND FILTER */}
-
-      <div className="toolbar">
-        <input
-          className="search"
-          type="text"
-          placeholder="Search shipment, container, BL..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <select
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value)
-          }
-        >
-          <option value="All">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="In Transit">In Transit</option>
-          <option value="Arrived">Arrived</option>
-          <option value="Cleared">Cleared</option>
-          <option value="Delivered">Delivered</option>
-        </select>
-      </div>
-
-      {/* FORM */}
-
       {showForm && (
-        <section className="card">
-          <div className="cardHeader">
-            <h2>
-              {editingId
-                ? "Edit Shipment"
-                : "Shipment Details"}
-            </h2>
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "12px",
+            padding: "25px",
+            marginBottom: "30px",
+            background: "white",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "25px",
+            }}
+          >
+            <div>
+              <h2 style={{ marginBottom: "5px" }}>
+                Shipment Details
+              </h2>
+
+              <p style={{ margin: 0, color: "#666" }}>
+                Enter shipment and cargo information.
+              </p>
+            </div>
 
             <button
-              className="close"
+              type="button"
               onClick={() => {
                 setShowForm(false);
-                setEditingId(null);
+                setForm(emptyForm);
+                setMessage("");
+              }}
+              style={{
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: "16px",
               }}
             >
-              ✕
+              Close
             </button>
           </div>
 
-          <p>Enter shipment and cargo information.</p>
-
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={saveShipment}>
             <h3>Basic Information</h3>
 
-            <div className="grid">
-              <Field
-                label="Shipment Number"
+            <div style={gridStyle}>
+              <Input
+                label="Shipment Number *"
                 name="shipment_no"
+                value={form.shipment_no}
+                onChange={handleChange}
                 required
               />
 
-              <Field
+              <Input
                 label="Company ID"
                 name="company_id"
+                value={form.company_id}
+                onChange={handleChange}
+                type="number"
               />
 
-              <Field
+              <Input
                 label="Order ID"
                 name="order_id"
+                value={form.order_id}
+                onChange={handleChange}
+                type="number"
               />
 
-              <Field
+              <Input
                 label="Supplier ID"
                 name="supplier_id"
+                value={form.supplier_id}
+                onChange={handleChange}
+                type="number"
               />
 
-              <Field
+              <Input
                 label="Customer ID"
                 name="customer_id"
+                value={form.customer_id}
+                onChange={handleChange}
+                type="number"
               />
             </div>
 
-            <h3>Cargo Information</h3>
+            <h3 style={{ marginTop: "30px" }}>
+              Cargo Information
+            </h3>
 
-            <div className="grid">
-              <Field
+            <div style={gridStyle}>
+              <Input
                 label="Product Description"
                 name="product_description"
+                value={form.product_description}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Quantity"
                 name="quantity"
+                value={form.quantity}
+                onChange={handleChange}
                 type="number"
               />
 
-              <Field
+              <Input
                 label="Unit"
                 name="unity"
+                value={form.unity}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Weight"
                 name="weight"
+                value={form.weight}
+                onChange={handleChange}
                 type="number"
               />
 
-              <Field
+              <Input
                 label="Weight Unit"
                 name="weight_unit"
+                value={form.weight_unit}
+                onChange={handleChange}
               />
             </div>
 
-            <h3>Shipping Information</h3>
+            <h3 style={{ marginTop: "30px" }}>
+              Shipping Information
+            </h3>
 
-            <div className="grid">
-              <Field
+            <div style={gridStyle}>
+              <Input
                 label="Container Number"
                 name="container_no"
+                value={form.container_no}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Bill of Lading"
                 name="bl_no"
+                value={form.bl_no}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Vessel / Flight"
                 name="vessel_flight"
+                value={form.vessel_flight}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Port of Loading"
                 name="port_of_loading"
+                value={form.port_of_loading}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Destination Port"
                 name="destination_port"
+                value={form.destination_port}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="ETD"
                 name="etd"
+                value={form.etd}
+                onChange={handleChange}
                 type="date"
               />
 
-              <Field
+              <Input
                 label="ETA"
                 name="eta"
+                value={form.eta}
+                onChange={handleChange}
                 type="date"
               />
 
-              <Field
+              <Input
                 label="Current Location"
                 name="current_location"
+                value={form.current_location}
+                onChange={handleChange}
               />
-            </div>
 
-            <h3>Clearance Information</h3>
-
-            <div className="grid">
-              <div className="field">
-                <label>Status</label>
+              <div>
+                <label style={labelStyle}>Status</label>
 
                 <select
                   name="status"
                   value={form.status}
                   onChange={handleChange}
+                  style={inputStyle}
                 >
-                  <option value="Pending">
-                    Pending
-                  </option>
-                  <option value="In Transit">
-                    In Transit
-                  </option>
-                  <option value="Arrived">
-                    Arrived
-                  </option>
-                  <option value="Cleared">
-                    Cleared
-                  </option>
-                  <option value="Delivered">
-                    Delivered
-                  </option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Transit">In Transit</option>
+                  <option value="Arrived">Arrived</option>
+                  <option value="Cleared">Cleared</option>
+                  <option value="Delivered">Delivered</option>
                 </select>
               </div>
 
-              <Field
+              <Input
                 label="Assigned Clearing Agent"
                 name="assigned_clearing_agent"
+                value={form.assigned_clearing_agent}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Port of Entry"
                 name="port_of_entry"
+                value={form.port_of_entry}
+                onChange={handleChange}
               />
 
-              <Field
+              <Input
                 label="Arrival Date"
                 name="arrival_date"
+                value={form.arrival_date}
+                onChange={handleChange}
                 type="date"
               />
 
-              <Field
+              <Input
                 label="Clearance Date"
                 name="clearance_date"
+                value={form.clearance_date}
+                onChange={handleChange}
                 type="date"
               />
             </div>
 
-            <button
-              className="primary saveButton"
-              type="submit"
-              disabled={saving}
+            <div
+              style={{
+                marginTop: "30px",
+                display: "flex",
+                gap: "12px",
+              }}
             >
-              {saving
-                ? "Saving..."
-                : editingId
-                ? "Update Shipment"
-                : "Save Shipment"}
-            </button>
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  padding: "12px 25px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#111827",
+                  color: "white",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                {saving ? "Saving..." : "Save Shipment"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setForm(emptyForm);
+                }}
+                style={{
+                  padding: "12px 25px",
+                  borderRadius: "8px",
+                  border: "1px solid #ddd",
+                  background: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
-        </section>
-      )}
-
-      {/* VIEW */}
-
-      {showView && selectedShipment && (
-        <section className="card">
-          <div className="cardHeader">
-            <h2>Shipment Details</h2>
-
-            <button
-              className="close"
-              onClick={() => setShowView(false)}
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="details">
-            {Object.entries(selectedShipment).map(
-              ([key, value]) => (
-                <div className="detail" key={key}>
-                  <strong>
-                    {key.replaceAll("_", " ")}
-                  </strong>
-                  <span>
-                    {value === null ||
-                    value === ""
-                      ? "-"
-                      : String(value)}
-                  </span>
-                </div>
-              )
-            )}
-          </div>
-
-          <button
-            className="primary"
-            onClick={() =>
-              handleEdit(selectedShipment)
-            }
-          >
-            Edit Shipment
-          </button>
-        </section>
-      )}
-
-      {/* SHIPMENTS TABLE */}
-
-      <section className="card">
-        <div className="cardHeader">
-          <h2>Shipment List</h2>
-          <span>
-            {filteredShipments.length} shipment(s)
-          </span>
         </div>
+      )}
+
+      <div>
+        <h2>Shipment List</h2>
 
         {loading ? (
           <p>Loading shipments...</p>
-        ) : filteredShipments.length === 0 ? (
+        ) : shipments.length === 0 ? (
           <p>No shipments found.</p>
         ) : (
-          <div className="tableWrapper">
-            <table>
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                minWidth: "900px",
+              }}
+            >
               <thead>
                 <tr>
-                  <th>Shipment No.</th>
-                  <th>Container</th>
-                  <th>Bill of Lading</th>
-                  <th>Destination</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th style={thStyle}>Shipment No.</th>
+                  <th style={thStyle}>Container</th>
+                  <th style={thStyle}>Bill of Lading</th>
+                  <th style={thStyle}>Destination</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Actions</th>
                 </tr>
               </thead>
 
               <tbody>
-                {filteredShipments.map(
-                  (shipment) => (
-                    <tr key={shipment.id}>
-                      <td>
-                        {shipment.shipment_no || "-"}
-                      </td>
+                {shipments.map((shipment) => (
+                  <tr key={shipment.id}>
+                    <td style={tdStyle}>
+                      {shipment.shipment_no || "-"}
+                    </td>
 
-                      <td>
-                        {shipment.container_no || "-"}
-                      </td>
+                    <td style={tdStyle}>
+                      {shipment.container_no || "-"}
+                    </td>
 
-                      <td>
-                        {shipment.bl_no || "-"}
-                      </td>
+                    <td style={tdStyle}>
+                      {shipment.bl_no || "-"}
+                    </td>
 
-                      <td>
-                        {shipment.destination_port ||
-                          "-"}
-                      </td>
+                    <td style={tdStyle}>
+                      {shipment.destination_port || "-"}
+                    </td>
 
-                      <td>
-                        <span className="status">
-                          {shipment.status ||
-                            "Pending"}
-                        </span>
-                      </td>
+                    <td style={tdStyle}>
+                      <select
+                        value={shipment.status || "Pending"}
+                        onChange={(e) =>
+                          updateStatus(
+                            shipment.id,
+                            e.target.value
+                          )
+                        }
+                        style={{
+                          padding: "7px",
+                          borderRadius: "6px",
+                          border: "1px solid #ddd",
+                        }}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In Transit">
+                          In Transit
+                        </option>
+                        <option value="Arrived">Arrived</option>
+                        <option value="Cleared">Cleared</option>
+                        <option value="Delivered">
+                          Delivered
+                        </option>
+                      </select>
+                    </td>
 
-                      <td className="actions">
-                        <button
-                          onClick={() =>
-                            handleView(shipment)
-                          }
-                        >
-                          View
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            handleEdit(shipment)
-                          }
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          className="danger"
-                          onClick={() =>
-                            handleDelete(
-                              shipment.id
-                            )
-                          }
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                )}
+                    <td style={tdStyle}>
+                      <span style={{ color: "#666" }}>
+                        Shipment #{shipment.id}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
-      </section>
-
-      <style jsx>{`
-        .page {
-          padding: 24px;
-          max-width: 1400px;
-          margin: auto;
-        }
-
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 20px;
-          margin-bottom: 20px;
-        }
-
-        h1 {
-          margin: 0;
-        }
-
-        h2 {
-          margin: 0;
-        }
-
-        h3 {
-          margin-top: 28px;
-        }
-
-        p {
-          color: #666;
-        }
-
-        .primary {
-          background: #111827;
-          color: white;
-          border: none;
-          padding: 12px 18px;
-          border-radius: 8px;
-          cursor: pointer;
-        }
-
-        .primary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .message {
-          padding: 12px;
-          background: #f3f4f6;
-          border-radius: 8px;
-          margin-bottom: 15px;
-        }
-
-        .toolbar {
-          display: flex;
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-
-        .search {
-          flex: 1;
-        }
-
-        input,
-        select {
-          width: 100%;
-          padding: 11px;
-          border: 1px solid #d1d5db;
-          border-radius: 7px;
-          box-sizing: border-box;
-          background: white;
-        }
-
-        .toolbar select {
-          max-width: 200px;
-        }
-
-        .card {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          padding: 20px;
-          margin-bottom: 20px;
-        }
-
-        .cardHeader {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 10px;
-        }
-
-        .close {
-          border: none;
-          background: transparent;
-          font-size: 20px;
-          cursor: pointer;
-        }
-
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(
-            auto-fit,
-            minmax(220px, 1fr)
-          );
-          gap: 16px;
-        }
-
-        .field label {
-          display: block;
-          font-weight: 600;
-          margin-bottom: 6px;
-        }
-
-        .saveButton {
-          margin-top: 25px;
-        }
-
-        .tableWrapper {
-          overflow-x: auto;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 850px;
-        }
-
-        th,
-        td {
-          text-align: left;
-          padding: 12px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        th {
-          background: #f9fafb;
-        }
-
-        .status {
-          padding: 5px 9px;
-          border-radius: 20px;
-          background: #f3f4f6;
-          font-size: 13px;
-        }
-
-        .actions {
-          display: flex;
-          gap: 6px;
-        }
-
-        .actions button {
-          border: 1px solid #d1d5db;
-          background: white;
-          padding: 7px 10px;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-
-        .actions .danger {
-          color: #dc2626;
-        }
-
-        .details {
-          display: grid;
-          grid-template-columns: repeat(
-            auto-fit,
-            minmax(220px, 1fr)
-          );
-          gap: 15px;
-          margin: 20px 0;
-        }
-
-        .detail {
-          padding: 12px;
-          background: #f9fafb;
-          border-radius: 8px;
-        }
-
-        .detail strong {
-          display: block;
-          text-transform: capitalize;
-          margin-bottom: 5px;
-        }
-
-        @media (max-width: 600px) {
-          .page {
-            padding: 14px;
-          }
-
-          .header {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .toolbar {
-            flex-direction: column;
-          }
-
-          .toolbar select {
-            max-width: none;
-          }
-
-          .actions {
-            flex-direction: column;
-          }
-        }
-      `}</style>
+      </div>
     </main>
   );
 }
+
+function Input({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+}) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+
+      <input
+        name={name}
+        value={value}
+        onChange={onChange}
+        type={type}
+        required={required}
+        style={inputStyle}
+      />
+    </div>
+  );
+}
+
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+  gap: "18px",
+};
+
+const labelStyle = {
+  display: "block",
+  marginBottom: "7px",
+  fontWeight: "600",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "11px",
+  borderRadius: "7px",
+  border: "1px solid #ccc",
+  boxSizing: "border-box",
+  background: "white",
+};
+
+const thStyle = {
+  textAlign: "left",
+  padding: "12px",
+  borderBottom: "2px solid #ddd",
+  background: "#f8f8f8",
+};
+
+const tdStyle = {
+  padding: "12px",
+  borderBottom: "1px solid #eee",
+};
+
+                
