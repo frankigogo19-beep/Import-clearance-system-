@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -37,10 +38,16 @@ export default function ClearanceCasesPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetchCases();
-    fetchShipments();
-    fetchCompanies();
+    loadAll();
   }, []);
+
+  async function loadAll() {
+    await Promise.all([
+      fetchCases(),
+      fetchShipments(),
+      fetchCompanies(),
+    ]);
+  }
 
   async function fetchCases() {
     const { data, error } = await supabase
@@ -62,9 +69,12 @@ export default function ClearanceCasesPage() {
       .select("id, shipment_no")
       .order("id", { ascending: false });
 
-    if (!error) {
-      setShipments(data || []);
+    if (error) {
+      console.log("Shipment loading error:", error.message);
+      return;
     }
+
+    setShipments(data || []);
   }
 
   async function fetchCompanies() {
@@ -73,9 +83,12 @@ export default function ClearanceCasesPage() {
       .select("id, name")
       .order("id", { ascending: false });
 
-    if (!error) {
-      setCompanies(data || []);
+    if (error) {
+      console.log("Company loading error:", error.message);
+      return;
     }
+
+    setCompanies(data || []);
   }
 
   function handleChange(e) {
@@ -89,13 +102,21 @@ export default function ClearanceCasesPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     setLoading(true);
     setMessage("");
 
     const payload = {
       case_number: form.case_number || null,
-      shipment_id: form.shipment_id ? Number(form.shipment_id) : null,
-      company_id: form.company_id ? Number(form.company_id) : null,
+
+      shipment_id: form.shipment_id
+        ? Number(form.shipment_id)
+        : null,
+
+      company_id: form.company_id
+        ? Number(form.company_id)
+        : null,
+
       declaration_no: form.declaration_no || null,
       declaration_number: form.declaration_number || null,
       customs_entry_number: form.customs_entry_number || null,
@@ -105,15 +126,34 @@ export default function ClearanceCasesPage() {
       clearing_agent: form.clearing_agent || null,
       customs_office: form.customs_office || null,
       port_of_entry: form.port_of_entry || null,
-      clearance_status: form.clearance_status || null,
-      inspection_status: form.inspection_status || null,
-      assessment_status: form.assessment_status || null,
-      payment_status: form.payment_status || null,
-      release_status: form.release_status || null,
-      inspection_date: form.inspection_date || null,
-      assessment_date: form.assessment_date || null,
-      payment_date: form.payment_date || null,
-      release_date: form.release_date || null,
+
+      clearance_status:
+        form.clearance_status || "Pending",
+
+      inspection_status:
+        form.inspection_status || "Pending",
+
+      assessment_status:
+        form.assessment_status || "Pending",
+
+      payment_status:
+        form.payment_status || "Pending",
+
+      release_status:
+        form.release_status || "Pending",
+
+      inspection_date:
+        form.inspection_date || null,
+
+      assessment_date:
+        form.assessment_date || null,
+
+      payment_date:
+        form.payment_date || null,
+
+      release_date:
+        form.release_date || null,
+
       remarks: form.remarks || null,
     };
 
@@ -124,20 +164,58 @@ export default function ClearanceCasesPage() {
     setLoading(false);
 
     if (error) {
-      setMessage("Error saving clearance case: " + error.message);
+      setMessage(
+        "Error saving clearance case: " +
+          error.message
+      );
       return;
     }
 
-    setMessage("Clearance case saved successfully.");
+    setMessage(
+      "Clearance case saved successfully."
+    );
 
     setForm(emptyForm);
-    fetchCases();
+
+    await fetchCases();
+  }
+
+  function getShipmentName(shipmentId) {
+    if (!shipmentId) return "-";
+
+    const shipment = shipments.find(
+      (item) => Number(item.id) === Number(shipmentId)
+    );
+
+    if (!shipment) {
+      return `Shipment ID ${shipmentId}`;
+    }
+
+    return shipment.shipment_no
+      ? shipment.shipment_no
+      : `Shipment ID ${shipment.id}`;
+  }
+
+  function getCompanyName(companyId) {
+    if (!companyId) return "-";
+
+    const company = companies.find(
+      (item) => Number(item.id) === Number(companyId)
+    );
+
+    if (!company) {
+      return `Company ID ${companyId}`;
+    }
+
+    return company.name
+      ? company.name
+      : `Company ID ${company.id}`;
   }
 
   return (
     <main
       style={{
-        maxWidth: "1100px",
+        maxWidth: "1200px",
         margin: "0 auto",
         padding: "30px 20px",
       }}
@@ -145,7 +223,8 @@ export default function ClearanceCasesPage() {
       <h1>Clearance Cases</h1>
 
       <p style={{ color: "#666" }}>
-        Manage customs clearance cases and track the clearance process.
+        Manage customs clearance cases and track
+        the clearance process.
       </p>
 
       {message && (
@@ -153,8 +232,8 @@ export default function ClearanceCasesPage() {
           style={{
             padding: "12px",
             marginBottom: "20px",
-            background: "#f1f1f1",
             borderRadius: "8px",
+            background: "#f1f1f1",
           }}
         >
           {message}
@@ -175,7 +254,8 @@ export default function ClearanceCasesPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(240px, 1fr))",
               gap: "15px",
             }}
           >
@@ -190,17 +270,23 @@ export default function ClearanceCasesPage() {
             </label>
 
             <label>
-              Shipment ID
+              Shipment
               <select
                 name="shipment_id"
                 value={form.shipment_id}
                 onChange={handleChange}
               >
-                <option value="">Select Shipment</option>
+                <option value="">
+                  Select Shipment
+                </option>
 
                 {shipments.map((shipment) => (
-                  <option key={shipment.id} value={shipment.id}>
-                    {shipment.id} - {shipment.shipment_no}
+                  <option
+                    key={shipment.id}
+                    value={shipment.id}
+                  >
+                    {shipment.shipment_no ||
+                      `Shipment ${shipment.id}`}
                   </option>
                 ))}
               </select>
@@ -213,11 +299,17 @@ export default function ClearanceCasesPage() {
                 value={form.company_id}
                 onChange={handleChange}
               >
-                <option value="">Select Company</option>
+                <option value="">
+                  Select Company
+                </option>
 
                 {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.id} - {company.name}
+                  <option
+                    key={company.id}
+                    value={company.id}
+                  >
+                    {company.name ||
+                      `Company ${company.id}`}
                   </option>
                 ))}
               </select>
@@ -421,12 +513,16 @@ export default function ClearanceCasesPage() {
             }}
           >
             Remarks
+
             <textarea
               name="remarks"
               value={form.remarks}
               onChange={handleChange}
               rows="4"
-              style={{ width: "100%" }}
+              style={{
+                width: "100%",
+                marginTop: "5px",
+              }}
             />
           </label>
 
@@ -438,10 +534,14 @@ export default function ClearanceCasesPage() {
               padding: "12px 20px",
               borderRadius: "8px",
               border: "none",
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: loading
+                ? "not-allowed"
+                : "pointer",
             }}
           >
-            {loading ? "Saving..." : "Save Clearance Case"}
+            {loading
+              ? "Saving..."
+              : "Save Clearance Case"}
           </button>
         </form>
       </section>
@@ -452,25 +552,31 @@ export default function ClearanceCasesPage() {
         {cases.length === 0 ? (
           <p>No clearance cases found.</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div
+            style={{
+              overflowX: "auto",
+            }}
+          >
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                minWidth: "900px",
+                minWidth: "1100px",
               }}
             >
               <thead>
                 <tr>
                   <th>ID</th>
                   <th>Case Number</th>
-                  <th>Shipment ID</th>
-                  <th>Company ID</th>
+                  <th>Shipment</th>
+                  <th>Company</th>
                   <th>Declaration No</th>
                   <th>TIN</th>
                   <th>Importer</th>
-                  <th>Clearance Status</th>
-                  <th>Release Status</th>
+                  <th>Clearance</th>
+                  <th>Inspection</th>
+                  <th>Payment</th>
+                  <th>Release</th>
                 </tr>
               </thead>
 
@@ -478,14 +584,52 @@ export default function ClearanceCasesPage() {
                 {cases.map((item) => (
                   <tr key={item.id}>
                     <td>{item.id}</td>
-                    <td>{item.case_number || "-"}</td>
-                    <td>{item.shipment_id || "-"}</td>
-                    <td>{item.company_id || "-"}</td>
-                    <td>{item.declaration_no || "-"}</td>
+
+                    <td>
+                      {item.case_number || "-"}
+                    </td>
+
+                    <td>
+                      {getShipmentName(
+                        item.shipment_id
+                      )}
+                    </td>
+
+                    <td>
+                      {getCompanyName(
+                        item.company_id
+                      )}
+                    </td>
+
+                    <td>
+                      {item.declaration_no || "-"}
+                    </td>
+
                     <td>{item.tin || "-"}</td>
-                    <td>{item.importer_name || "-"}</td>
-                    <td>{item.clearance_status || "-"}</td>
-                    <td>{item.release_status || "-"}</td>
+
+                    <td>
+                      {item.importer_name || "-"}
+                    </td>
+
+                    <td>
+                      {item.clearance_status ||
+                        "Pending"}
+                    </td>
+
+                    <td>
+                      {item.inspection_status ||
+                        "Pending"}
+                    </td>
+
+                    <td>
+                      {item.payment_status ||
+                        "Pending"}
+                    </td>
+
+                    <td>
+                      {item.release_status ||
+                        "Pending"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
