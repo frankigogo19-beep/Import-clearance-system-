@@ -659,26 +659,4 @@ const tdStyle = {
   borderBottom: "1px solid #eee",
   whiteSpace: "nowrap",
 };
-Sawa Draven 👍 Nimeangalia deliveries table yako. Schema iko clear, na company_id, shipment_id, truck_id, customer_id zote ni bigint, hivyo tutatumia Number() na null kwa sehemu zilizoachwa wazi ili kuepuka ile foreign-key error.
-Sasa badilisha file:
-app/deliveries/page.js
-weka code hii yote:
-JavaScript
-Kitu muhimu
-Code hii inatumia columns zako halisi:
-delivery_number
-company_id
-shipment_id
-truck_id
-customer_id
-pickup_location
-delivery_location
-pickup_date
-expected_delivery_date
-actual_delivery_date
-delivery_date
-status
-remarks
-driver_name
-truck_number
-notes
+
