@@ -3,169 +3,299 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+const emptyForm = {
+  company_id: "",
+  shipment_id: "",
+  container_id: "",
+  document_type: "Commercial Invoice",
+  document_name: "",
+  document_number: "",
+  file_url: "",
+  file_path: "",
+  version: "1",
+  status: "Active",
+  issued_date: "",
+  expiry_date: "",
+  uploaded_by: "",
+  description: "",
+};
+
+const documentTypes = [
+  "Commercial Invoice",
+  "Packing List",
+  "Bill of Lading",
+  "Air Waybill",
+  "Certificate of Origin",
+  "Import Declaration",
+  "Customs Entry",
+  "Delivery Order",
+  "Authorization Letter",
+  "Insurance Certificate",
+  "Inspection Certificate",
+  "Tax Clearance",
+  "Other",
+];
+
+const statuses = [
+  "Active",
+  "Pending",
+  "Expired",
+  "Cancelled",
+  "Archived",
+];
+
 export default function DocumentsPage() {
+  const [form, setForm] = useState(emptyForm);
+
   const [documents, setDocuments] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [shipments, setShipments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [containers, setContainers] = useState([]);
+
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [form, setForm] = useState({
-    document_name: "",
-    document_type: "",
-    document_number: "",
-    shipment_id: "",
-    container_id: "",
-    file_url: "",
-    file_path: "",
-    version: "1",
-    status: "Pending",
-    issued_date: "",
-    expiry_date: "",
-    uploaded_by: "",
-    description: "",
-  });
-
   useEffect(() => {
-    loadDocuments();
-    loadShipments();
+    loadData();
   }, []);
 
-  async function loadDocuments() {
-    setLoading(true);
+  async function loadData() {
+    await Promise.all([
+      fetchDocuments(),
+      fetchCompanies(),
+      fetchShipments(),
+      fetchContainers(),
+    ]);
+  }
 
+  async function fetchDocuments() {
     const { data, error } = await supabase
       .from("documents")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false });
 
     if (error) {
-      setMessage("Error loading documents: " + error.message);
-    } else {
-      setDocuments(data || []);
+      setMessage(
+        "Error loading documents: " + error.message
+      );
+      return;
     }
 
-    setLoading(false);
+    setDocuments(data || []);
   }
 
-  async function loadShipments() {
+  async function fetchCompanies() {
+    const { data, error } = await supabase
+      .from("companies")
+      .select("id, name")
+      .order("id", { ascending: false });
+
+    if (error) {
+      console.log(
+        "Company loading error:",
+        error.message
+      );
+      return;
+    }
+
+    setCompanies(data || []);
+  }
+
+  async function fetchShipments() {
     const { data, error } = await supabase
       .from("shipments")
       .select("id, shipment_no")
       .order("id", { ascending: false });
 
     if (error) {
-      setMessage("Error loading shipments: " + error.message);
+      console.log(
+        "Shipment loading error:",
+        error.message
+      );
       return;
     }
 
     setShipments(data || []);
   }
 
+  async function fetchContainers() {
+    const { data, error } = await supabase
+      .from("containers")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (error) {
+      console.log(
+        "Container loading error:",
+        error.message
+      );
+      return;
+    }
+
+    setContainers(data || []);
+  }
+
   function handleChange(e) {
     const { name, value } = e.target;
 
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   }
 
-  async function saveDocument(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+
+    setLoading(true);
     setMessage("");
 
-    if (!form.document_name.trim()) {
-      setMessage("Document Name is required.");
-      return;
-    }
+    const payload = {
+      company_id: form.company_id
+        ? Number(form.company_id)
+        : null,
 
-    setSaving(true);
-
-    const documentData = {
-      document_name: form.document_name.trim(),
-      document_type: form.document_type || null,
-      document_number: form.document_number || null,
       shipment_id: form.shipment_id
         ? Number(form.shipment_id)
         : null,
+
       container_id: form.container_id
         ? Number(form.container_id)
         : null,
-      file_url: form.file_url || null,
-      file_path: form.file_path || null,
+
+      document_type:
+        form.document_type || "Other",
+
+      document_name:
+        form.document_name.trim(),
+
+      document_number:
+        form.document_number.trim() || null,
+
+      file_url:
+        form.file_url.trim() || null,
+
+      file_path:
+        form.file_path.trim() || null,
+
       version: form.version
         ? Number(form.version)
         : 1,
-      status: form.status || "Pending",
-      issued_date: form.issued_date || null,
-      expiry_date: form.expiry_date || null,
-      uploaded_by: form.uploaded_by || null,
-      description: form.description || null,
+
+      status:
+        form.status || "Active",
+
+      issued_date:
+        form.issued_date || null,
+
+      expiry_date:
+        form.expiry_date || null,
+
+      uploaded_by: form.uploaded_by
+        ? Number(form.uploaded_by)
+        : null,
+
+      description:
+        form.description.trim() || null,
     };
 
-    const { error } = await supabase
-      .from("documents")
-      .insert([documentData]);
-
-    setSaving(false);
-
-    if (error) {
-      console.error(error);
-      setMessage("Error saving document: " + error.message);
+    if (!payload.document_name) {
+      setLoading(false);
+      setMessage(
+        "Document Name is required."
+      );
       return;
     }
 
-    setMessage("Document created successfully.");
+    const { error } = await supabase
+      .from("documents")
+      .insert([payload]);
 
-    setForm({
-      document_name: "",
-      document_type: "",
-      document_number: "",
-      shipment_id: "",
-      container_id: "",
-      file_url: "",
-      file_path: "",
-      version: "1",
-      status: "Pending",
-      issued_date: "",
-      expiry_date: "",
-      uploaded_by: "",
-      description: "",
-    });
+    setLoading(false);
 
-    loadDocuments();
-  }
+    if (error) {
+      setMessage(
+        "Error saving document: " +
+          error.message
+      );
+      return;
+    }
 
-  function getShipmentNumber(shipmentId) {
-    const shipment = shipments.find(
-      (item) => String(item.id) === String(shipmentId)
+    setMessage(
+      "Document saved successfully."
     );
 
-    return shipment?.shipment_no || shipmentId || "-";
+    setForm(emptyForm);
+
+    await fetchDocuments();
+  }
+
+  function getCompanyName(companyId) {
+    if (!companyId) return "-";
+
+    const company = companies.find(
+      (item) =>
+        Number(item.id) === Number(companyId)
+    );
+
+    return company?.name ||
+      `Company ID ${companyId}`;
+  }
+
+  function getShipmentName(shipmentId) {
+    if (!shipmentId) return "-";
+
+    const shipment = shipments.find(
+      (item) =>
+        Number(item.id) === Number(shipmentId)
+    );
+
+    return shipment?.shipment_no ||
+      `Shipment ID ${shipmentId}`;
+  }
+
+  function getContainerName(containerId) {
+    if (!containerId) return "-";
+
+    const container = containers.find(
+      (item) =>
+        Number(item.id) === Number(containerId)
+    );
+
+    if (!container) {
+      return `Container ID ${containerId}`;
+    }
+
+    return (
+      container.container_no ||
+      container.container_number ||
+      container.number ||
+      `Container ID ${container.id}`
+    );
   }
 
   return (
     <main
       style={{
-        padding: "30px",
         maxWidth: "1200px",
-        margin: "auto",
+        margin: "0 auto",
+        padding: "30px 20px",
       }}
     >
       <h1>Documents</h1>
 
-      <p>
-        Manage import, shipping and clearance documents.
+      <p style={{ color: "#666" }}>
+        Manage shipment, customs, clearance,
+        and logistics documents.
       </p>
 
       {message && (
         <div
           style={{
             padding: "12px",
-            margin: "15px 0",
-            background: "#f3f4f6",
+            marginBottom: "20px",
             borderRadius: "8px",
+            background: "#f1f1f1",
           }}
         >
           {message}
@@ -177,74 +307,41 @@ export default function DocumentsPage() {
           border: "1px solid #ddd",
           borderRadius: "10px",
           padding: "20px",
-          marginTop: "20px",
+          marginBottom: "30px",
         }}
       >
         <h2>Add Document</h2>
 
-        <form onSubmit={saveDocument}>
-          <div style={{ display: "grid", gap: "15px" }}>
-
+        <form onSubmit={handleSubmit}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "15px",
+            }}
+          >
             <label>
-              Document Name *
-              <input
-                name="document_name"
-                value={form.document_name}
-                onChange={handleChange}
-                placeholder="e.g. Commercial Invoice"
-                required
-                style={inputStyle}
-              />
-            </label>
-
-            <label>
-              Document Type
+              Company
               <select
-                name="document_type"
-                value={form.document_type}
+                name="company_id"
+                value={form.company_id}
                 onChange={handleChange}
-                style={inputStyle}
               >
-                <option value="">Select Type</option>
-                <option value="Commercial Invoice">
-                  Commercial Invoice
+                <option value="">
+                  Select Company
                 </option>
-                <option value="Packing List">
-                  Packing List
-                </option>
-                <option value="Bill of Lading">
-                  Bill of Lading
-                </option>
-                <option value="Certificate of Origin">
-                  Certificate of Origin
-                </option>
-                <option value="Import Declaration">
-                  Import Declaration
-                </option>
-                <option value="Delivery Order">
-                  Delivery Order
-                </option>
-                <option value="Authorization Letter">
-                  Authorization Letter
-                </option>
-                <option value="Customs Declaration">
-                  Customs Declaration
-                </option>
-                <option value="Other">
-                  Other
-                </option>
-              </select>
-            </label>
 
-            <label>
-              Document Number
-              <input
-                name="document_number"
-                value={form.document_number}
-                onChange={handleChange}
-                placeholder="e.g. INV-0001"
-                style={inputStyle}
-              />
+                {companies.map((company) => (
+                  <option
+                    key={company.id}
+                    value={company.id}
+                  >
+                    {company.name ||
+                      `Company ${company.id}`}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
@@ -253,7 +350,6 @@ export default function DocumentsPage() {
                 name="shipment_id"
                 value={form.shipment_id}
                 onChange={handleChange}
-                style={inputStyle}
               >
                 <option value="">
                   Select Shipment
@@ -264,35 +360,106 @@ export default function DocumentsPage() {
                     key={shipment.id}
                     value={shipment.id}
                   >
-                    {shipment.shipment_no
-                      ? `${shipment.shipment_no} (ID: ${shipment.id})`
-                      : `Shipment #${shipment.id}`}
+                    {shipment.shipment_no ||
+                      `Shipment ${shipment.id}`}
                   </option>
                 ))}
               </select>
             </label>
 
             <label>
-              Container ID
-              <input
+              Container
+              <select
                 name="container_id"
-                type="number"
                 value={form.container_id}
                 onChange={handleChange}
-                placeholder="Optional container ID"
-                style={inputStyle}
+              >
+                <option value="">
+                  Select Container
+                </option>
+
+                {containers.map((container) => (
+                  <option
+                    key={container.id}
+                    value={container.id}
+                  >
+                    {container.container_no ||
+                      container.container_number ||
+                      container.number ||
+                      `Container ${container.id}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Document Type *
+              <select
+                name="document_type"
+                value={form.document_type}
+                onChange={handleChange}
+                required
+              >
+                {documentTypes.map((type) => (
+                  <option
+                    key={type}
+                    value={type}
+                  >
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Document Name *
+              <input
+                name="document_name"
+                value={form.document_name}
+                onChange={handleChange}
+                placeholder="e.g. Invoice TATI 001"
+                required
+              />
+            </label>
+
+            <label>
+              Document Number
+              <input
+                name="document_number"
+                value={form.document_number}
+                onChange={handleChange}
+                placeholder="e.g. INV-2026-001"
+              />
+            </label>
+
+            <label>
+              File URL
+              <input
+                name="file_url"
+                value={form.file_url}
+                onChange={handleChange}
+                placeholder="https://..."
+              />
+            </label>
+
+            <label>
+              File Path
+              <input
+                name="file_path"
+                value={form.file_path}
+                onChange={handleChange}
+                placeholder="documents/invoice.pdf"
               />
             </label>
 
             <label>
               Version
               <input
-                name="version"
                 type="number"
                 min="1"
+                name="version"
                 value={form.version}
                 onChange={handleChange}
-                style={inputStyle}
               />
             </label>
 
@@ -302,12 +469,15 @@ export default function DocumentsPage() {
                 name="status"
                 value={form.status}
                 onChange={handleChange}
-                style={inputStyle}
               >
-                <option value="Pending">Pending</option>
-                <option value="Received">Received</option>
-                <option value="Verified">Verified</option>
-                <option value="Rejected">Rejected</option>
+                {statuses.map((status) => (
+                  <option
+                    key={status}
+                    value={status}
+                  >
+                    {status}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -318,7 +488,6 @@ export default function DocumentsPage() {
                 name="issued_date"
                 value={form.issued_date}
                 onChange={handleChange}
-                style={inputStyle}
               />
             </label>
 
@@ -329,140 +498,146 @@ export default function DocumentsPage() {
                 name="expiry_date"
                 value={form.expiry_date}
                 onChange={handleChange}
-                style={inputStyle}
               />
             </label>
 
             <label>
               Uploaded By
               <input
+                type="number"
                 name="uploaded_by"
                 value={form.uploaded_by}
                 onChange={handleChange}
-                placeholder="Name of uploader"
-                style={inputStyle}
+                placeholder="User ID"
               />
             </label>
-
-            <label>
-              File URL
-              <input
-                name="file_url"
-                value={form.file_url}
-                onChange={handleChange}
-                placeholder="Optional file URL"
-                style={inputStyle}
-              />
-            </label>
-
-            <label>
-              File Path
-              <input
-                name="file_path"
-                value={form.file_path}
-                onChange={handleChange}
-                placeholder="Optional file path"
-                style={inputStyle}
-              />
-            </label>
-
-            <label>
-              Description
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Document description"
-                rows="4"
-                style={inputStyle}
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: "12px 20px",
-                border: "none",
-                borderRadius: "8px",
-                cursor: saving ? "not-allowed" : "pointer",
-                fontWeight: "bold",
-              }}
-            >
-              {saving ? "Saving..." : "Save Document"}
-            </button>
-
           </div>
+
+          <label
+            style={{
+              display: "block",
+              marginTop: "15px",
+            }}
+          >
+            Description
+
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Document description..."
+              style={{
+                width: "100%",
+                marginTop: "5px",
+              }}
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              marginTop: "20px",
+              padding: "12px 20px",
+              borderRadius: "8px",
+              border: "none",
+              cursor: loading
+                ? "not-allowed"
+                : "pointer",
+            }}
+          >
+            {loading
+              ? "Saving..."
+              : "Save Document"}
+          </button>
         </form>
       </section>
 
-      <section style={{ marginTop: "30px" }}>
+      <section>
         <h2>Document List</h2>
 
-        {loading ? (
-          <p>Loading documents...</p>
-        ) : documents.length === 0 ? (
+        {documents.length === 0 ? (
           <p>No documents found.</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div
+            style={{
+              overflowX: "auto",
+            }}
+          >
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginTop: "15px",
+                minWidth: "1200px",
               }}
             >
               <thead>
                 <tr>
-                  <th style={thStyle}>ID</th>
-                  <th style={thStyle}>Document Name</th>
-                  <th style={thStyle}>Type</th>
-                  <th style={thStyle}>Number</th>
-                  <th style={thStyle}>Shipment</th>
-                  <th style={thStyle}>Version</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Issued</th>
-                  <th style={thStyle}>Expiry</th>
+                  <th>ID</th>
+                  <th>Document</th>
+                  <th>Type</th>
+                  <th>Number</th>
+                  <th>Company</th>
+                  <th>Shipment</th>
+                  <th>Container</th>
+                  <th>Version</th>
+                  <th>Status</th>
+                  <th>Issued</th>
+                  <th>Expiry</th>
                 </tr>
               </thead>
 
               <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id}>
-                    <td style={tdStyle}>
-                      {doc.id}
+                {documents.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.id}</td>
+
+                    <td>
+                      {item.document_name}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.document_name || "-"}
+                    <td>
+                      {item.document_type}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.document_type || "-"}
+                    <td>
+                      {item.document_number ||
+                        "-"}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.document_number || "-"}
+                    <td>
+                      {getCompanyName(
+                        item.company_id
+                      )}
                     </td>
 
-                    <td style={tdStyle}>
-                      {getShipmentNumber(doc.shipment_id)}
+                    <td>
+                      {getShipmentName(
+                        item.shipment_id
+                      )}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.version || "-"}
+                    <td>
+                      {getContainerName(
+                        item.container_id
+                      )}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.status || "-"}
+                    <td>
+                      {item.version || 1}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.issued_date || "-"}
+                    <td>
+                      {item.status || "Active"}
                     </td>
 
-                    <td style={tdStyle}>
-                      {doc.expiry_date || "-"}
+                    <td>
+                      {item.issued_date || "-"}
+                    </td>
+
+                    <td>
+                      {item.expiry_date || "-"}
                     </td>
                   </tr>
                 ))}
@@ -474,25 +649,3 @@ export default function DocumentsPage() {
     </main>
   );
 }
-
-const inputStyle = {
-  display: "block",
-  width: "100%",
-  padding: "10px",
-  marginTop: "6px",
-  border: "1px solid #ccc",
-  borderRadius: "6px",
-  boxSizing: "border-box",
-};
-
-const thStyle = {
-  textAlign: "left",
-  padding: "12px",
-  borderBottom: "2px solid #ddd",
-};
-
-const tdStyle = {
-  padding: "12px",
-  borderBottom: "1px solid #ddd",
-};
-
