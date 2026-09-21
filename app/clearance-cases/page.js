@@ -82,7 +82,7 @@ setMessage("");
 setShowForm(true);
 }
 function closeForm() { setShowForm(false); setEditingId(null); setForm(emptyForm); }
-function numberOrNull(value) { if (value === "" || value === null || value === undefined) { return null; }
+function numberOrNull(value) { if ( value === "" || value === null || value === undefined ) { return null; }
 const number = Number(value);
 
 return Number.isNaN(number) ? null : number;
@@ -509,6 +509,7 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
 
           <div>
             <label>Currency</label>
+
             <select
               name="currency"
               value={form.currency}
@@ -524,6 +525,7 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
 
           <div>
             <label>Status</label>
+
             <select
               name="status"
               value={form.status}
@@ -542,6 +544,7 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
 
           <div>
             <label>Current Stage</label>
+
             <select
               name="current_stage"
               value={form.current_stage}
@@ -551,16 +554,23 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
               <option value="Declaration">
                 Declaration
               </option>
-              <option value="Assessment">Assessment</option>
+              <option value="Assessment">
+                Assessment
+              </option>
               <option value="Payment">Payment</option>
-              <option value="Inspection">Inspection</option>
+              <option value="Inspection">
+                Inspection
+              </option>
               <option value="Release">Release</option>
-              <option value="Completed">Completed</option>
+              <option value="Completed">
+                Completed
+              </option>
             </select>
           </div>
 
           <div>
             <label>Inspection Status</label>
+
             <select
               name="inspection_status"
               value={form.inspection_status}
@@ -568,7 +578,9 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
               style={inputStyle}
             >
               <option value="Pending">Pending</option>
-              <option value="Scheduled">Scheduled</option>
+              <option value="Scheduled">
+                Scheduled
+              </option>
               <option value="In Progress">
                 In Progress
               </option>
@@ -582,6 +594,7 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
 
           <div>
             <label>Payment Status</label>
+
             <select
               name="payment_status"
               value={form.payment_status}
@@ -598,6 +611,7 @@ return ( <main style={{ padding: "24px", maxWidth: "1500px", margin: "0 auto", }
 
           <div>
             <label>Release Status</label>
+
             <select
               name="release_status"
               value={form.release_status}
