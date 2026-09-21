@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { supabase } from "../../lib/supabaseClient";
 
 export default function ProofOfDeliveryPage() {
-  const [podList, setPodList] = useState([]);
+  const [pods, setPods] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -25,22 +20,22 @@ export default function ProofOfDeliveryPage() {
     notes: "",
   });
 
-  async function loadPods() {
+  async function loadPODs() {
     const { data, error } = await supabase
-      .from("proof_of_deliveries")
+      .from("proof_of_delivery")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error loading POD:", error);
+      console.error(error);
       return;
     }
 
-    setPodList(data || []);
+    setPods(data || []);
   }
 
   useEffect(() => {
-    loadPods();
+    loadPODs();
   }, []);
 
   function handleChange(e) {
@@ -55,17 +50,17 @@ export default function ProofOfDeliveryPage() {
     setLoading(true);
 
     const { error } = await supabase
-      .from("proof_of_deliveries")
+      .from("proof_of_delivery")
       .insert([form]);
 
+    setLoading(false);
+
     if (error) {
-      alert("Error saving proof of delivery: " + error.message);
-      console.error(error);
-      setLoading(false);
+      alert("Error saving POD: " + error.message);
       return;
     }
 
-    alert("Proof of Delivery saved successfully.");
+    alert("Proof of Delivery saved successfully!");
 
     setForm({
       pod_number: "",
@@ -80,8 +75,7 @@ export default function ProofOfDeliveryPage() {
       notes: "",
     });
 
-    await loadPods();
-    setLoading(false);
+    loadPODs();
   }
 
   return (
@@ -92,145 +86,102 @@ export default function ProofOfDeliveryPage() {
         Manage proof of delivery records and delivery confirmations.
       </p>
 
-      <hr />
-
       <h2>Add Proof of Delivery</h2>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: "grid", gap: "12px" }}>
+        <label>POD Number *</label>
+        <input
+          name="pod_number"
+          value={form.pod_number}
+          onChange={handleChange}
+          required
+        />
 
-          <label>
-            POD Number *
-            <input
-              name="pod_number"
-              value={form.pod_number}
-              onChange={handleChange}
-              required
-              style={inputStyle}
-            />
-          </label>
+        <label>Delivery ID *</label>
+        <input
+          name="delivery_id"
+          value={form.delivery_id}
+          onChange={handleChange}
+          required
+        />
 
-          <label>
-            Delivery ID *
-            <input
-              name="delivery_id"
-              value={form.delivery_id}
-              onChange={handleChange}
-              required
-              style={inputStyle}
-            />
-          </label>
+        <label>Shipment ID *</label>
+        <input
+          name="shipment_id"
+          value={form.shipment_id}
+          onChange={handleChange}
+          required
+        />
 
-          <label>
-            Shipment ID
-            <input
-              name="shipment_id"
-              value={form.shipment_id}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
+        <label>Customer Name</label>
+        <input
+          name="customer_name"
+          value={form.customer_name}
+          onChange={handleChange}
+        />
 
-          <label>
-            Customer Name
-            <input
-              name="customer_name"
-              value={form.customer_name}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
+        <label>Delivery Date</label>
+        <input
+          type="date"
+          name="delivery_date"
+          value={form.delivery_date}
+          onChange={handleChange}
+        />
 
-          <label>
-            Delivery Date
-            <input
-              type="date"
-              name="delivery_date"
-              value={form.delivery_date}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
+        <label>Received By</label>
+        <input
+          name="received_by"
+          value={form.received_by}
+          onChange={handleChange}
+        />
 
-          <label>
-            Received By
-            <input
-              name="received_by"
-              value={form.received_by}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
+        <label>Receiver Phone</label>
+        <input
+          name="receiver_phone"
+          value={form.receiver_phone}
+          onChange={handleChange}
+        />
 
-          <label>
-            Receiver Phone
-            <input
-              name="receiver_phone"
-              value={form.receiver_phone}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
+        <label>Status</label>
+        <select
+          name="status"
+          value={form.status}
+          onChange={handleChange}
+        >
+          <option value="Pending">Pending</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Rejected">Rejected</option>
+        </select>
 
-          <label>
-            Status
-            <select
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              style={inputStyle}
-            >
-              <option value="Pending">Pending</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Rejected">Rejected</option>
-            </select>
-          </label>
+        <label>Delivery Address</label>
+        <textarea
+          name="delivery_address"
+          value={form.delivery_address}
+          onChange={handleChange}
+        />
 
-          <label>
-            Delivery Address
-            <textarea
-              name="delivery_address"
-              value={form.delivery_address}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
+        <label>Notes</label>
+        <textarea
+          name="notes"
+          value={form.notes}
+          onChange={handleChange}
+        />
 
-          <label>
-            Notes
-            <textarea
-              name="notes"
-              value={form.notes}
-              onChange={handleChange}
-              style={inputStyle}
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={buttonStyle}
-          >
-            {loading ? "Saving..." : "Save Proof of Delivery"}
-          </button>
-
-        </div>
+        <button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Save Proof of Delivery"}
+        </button>
       </form>
 
-      <hr style={{ margin: "30px 0" }} />
+      <h2 style={{ marginTop: "40px" }}>
+        Proof of Delivery List
+      </h2>
 
-      <h2>Proof of Delivery List</h2>
-
-      {podList.length === 0 ? (
+      {pods.length === 0 ? (
         <p>No proof of delivery records found.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table
-            border="1"
-            cellPadding="8"
-            style={{ width: "100%", borderCollapse: "collapse" }}
-          >
+          <table border="1" cellPadding="8" style={{ width: "100%" }}>
             <thead>
               <tr>
                 <th>POD Number</th>
@@ -244,15 +195,15 @@ export default function ProofOfDeliveryPage() {
             </thead>
 
             <tbody>
-              {podList.map((pod) => (
+              {pods.map((pod) => (
                 <tr key={pod.id}>
                   <td>{pod.pod_number}</td>
                   <td>{pod.delivery_id}</td>
-                  <td>{pod.shipment_id || "-"}</td>
+                  <td>{pod.shipment_id}</td>
                   <td>{pod.customer_name || "-"}</td>
                   <td>{pod.delivery_date || "-"}</td>
                   <td>{pod.received_by || "-"}</td>
-                  <td>{pod.status || "-"}</td>
+                  <td>{pod.status}</td>
                 </tr>
               ))}
             </tbody>
@@ -262,19 +213,5 @@ export default function ProofOfDeliveryPage() {
     </main>
   );
 }
-
-const inputStyle = {
-  display: "block",
-  width: "100%",
-  padding: "10px",
-  marginTop: "5px",
-  boxSizing: "border-box",
-};
-
-const buttonStyle = {
-  padding: "12px 20px",
-  cursor: "pointer",
-  fontWeight: "bold",
-};
 
               
