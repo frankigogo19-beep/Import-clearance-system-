@@ -11,16 +11,15 @@ export default function ProofOfDeliveryPage() {
   const [loadingOptions, setLoadingOptions] = useState(true);
 
   const [form, setForm] = useState({
-    pod_number: "",
     delivery_id: "",
     shipment_id: "",
-    customer_name: "",
-    delivery_date: "",
-    received_by: "",
+    receiver_name: "",
     receiver_phone: "",
-    status: "Pending",
-    delivery_address: "",
-    notes: "",
+    delivery_date: "",
+    delivery_time: "",
+    signature_url: "",
+    photo_url: "",
+    remarks: "",
   });
 
   async function loadData() {
@@ -88,15 +87,9 @@ export default function ProofOfDeliveryPage() {
     setForm({
       ...form,
       delivery_id: deliveryId,
-      customer_name:
-        selectedDelivery?.customer_name ||
-        selectedDelivery?.receiver_name ||
-        selectedDelivery?.customer ||
-        "",
-      delivery_address:
-        selectedDelivery?.delivery_address ||
-        selectedDelivery?.address ||
-        "",
+      shipment_id: selectedDelivery?.shipment_id
+        ? String(selectedDelivery.shipment_id)
+        : form.shipment_id,
     });
   }
 
@@ -117,16 +110,15 @@ export default function ProofOfDeliveryPage() {
     }
 
     const podData = {
-      pod_number: form.pod_number,
       delivery_id: Number(form.delivery_id),
       shipment_id: Number(form.shipment_id),
-      customer_name: form.customer_name || null,
-      delivery_date: form.delivery_date || null,
-      received_by: form.received_by || null,
+      receiver_name: form.receiver_name || null,
       receiver_phone: form.receiver_phone || null,
-      status: form.status,
-      delivery_address: form.delivery_address || null,
-      notes: form.notes || null,
+      delivery_date: form.delivery_date || null,
+      delivery_time: form.delivery_time || null,
+      signature_url: form.signature_url || null,
+      photo_url: form.photo_url || null,
+      remarks: form.remarks || null,
     };
 
     const { error } = await supabase
@@ -144,16 +136,15 @@ export default function ProofOfDeliveryPage() {
     alert("Proof of Delivery saved successfully!");
 
     setForm({
-      pod_number: "",
       delivery_id: "",
       shipment_id: "",
-      customer_name: "",
-      delivery_date: "",
-      received_by: "",
+      receiver_name: "",
       receiver_phone: "",
-      status: "Pending",
-      delivery_address: "",
-      notes: "",
+      delivery_date: "",
+      delivery_time: "",
+      signature_url: "",
+      photo_url: "",
+      remarks: "",
     });
 
     loadData();
@@ -176,20 +167,9 @@ export default function ProofOfDeliveryPage() {
       <h2>Add Proof of Delivery</h2>
 
       <form onSubmit={handleSubmit}>
-
-        <label>POD Number *</label>
-        <input
-          name="pod_number"
-          value={form.pod_number}
-          onChange={handleChange}
-          placeholder="Example: POD-0001"
-          required
-        />
-
-        <br />
-        <br />
-
         <label>Delivery ID *</label>
+        <br />
+
         <select
           name="delivery_id"
           value={form.delivery_id}
@@ -204,7 +184,9 @@ export default function ProofOfDeliveryPage() {
 
           {deliveries.map((delivery) => (
             <option key={delivery.id} value={delivery.id}>
-              Delivery #{delivery.id}
+              {delivery.delivery_number
+                ? `${delivery.delivery_number} (ID: ${delivery.id})`
+                : `Delivery #${delivery.id}`}
             </option>
           ))}
         </select>
@@ -213,6 +195,8 @@ export default function ProofOfDeliveryPage() {
         <br />
 
         <label>Shipment ID *</label>
+        <br />
+
         <select
           name="shipment_id"
           value={form.shipment_id}
@@ -237,18 +221,35 @@ export default function ProofOfDeliveryPage() {
         <br />
         <br />
 
-        <label>Customer Name</label>
+        <label>Receiver Name</label>
+        <br />
+
         <input
-          name="customer_name"
-          value={form.customer_name}
+          name="receiver_name"
+          value={form.receiver_name}
           onChange={handleChange}
-          placeholder="Customer name"
+          placeholder="Name of person receiving goods"
+        />
+
+        <br />
+        <br />
+
+        <label>Receiver Phone</label>
+        <br />
+
+        <input
+          name="receiver_phone"
+          value={form.receiver_phone}
+          onChange={handleChange}
+          placeholder="0712345678"
         />
 
         <br />
         <br />
 
         <label>Delivery Date</label>
+        <br />
+
         <input
           type="date"
           name="delivery_date"
@@ -259,62 +260,54 @@ export default function ProofOfDeliveryPage() {
         <br />
         <br />
 
-        <label>Received By</label>
+        <label>Delivery Time</label>
+        <br />
+
         <input
-          name="received_by"
-          value={form.received_by}
+          type="time"
+          name="delivery_time"
+          value={form.delivery_time}
           onChange={handleChange}
-          placeholder="Name of person receiving goods"
         />
 
         <br />
         <br />
 
-        <label>Receiver Phone</label>
+        <label>Signature URL</label>
+        <br />
+
         <input
-          name="receiver_phone"
-          value={form.receiver_phone}
+          name="signature_url"
+          value={form.signature_url}
           onChange={handleChange}
-          placeholder="Phone number"
+          placeholder="Optional signature URL"
         />
 
         <br />
         <br />
 
-        <label>Status</label>
-        <select
-          name="status"
-          value={form.status}
-          onChange={handleChange}
-        >
-          <option value="Pending">Pending</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Confirmed">Confirmed</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-
-        <br />
+        <label>Photo URL</label>
         <br />
 
-        <label>Delivery Address</label>
-        <textarea
-          name="delivery_address"
-          value={form.delivery_address}
+        <input
+          name="photo_url"
+          value={form.photo_url}
           onChange={handleChange}
-          placeholder="Delivery address"
-          rows="3"
+          placeholder="Optional delivery photo URL"
         />
 
         <br />
         <br />
 
-        <label>Notes</label>
+        <label>Remarks</label>
+        <br />
+
         <textarea
-          name="notes"
-          value={form.notes}
+          name="remarks"
+          value={form.remarks}
           onChange={handleChange}
-          placeholder="Additional notes"
-          rows="3"
+          placeholder="Goods received in good condition and delivery confirmed by customer."
+          rows="4"
         />
 
         <br />
@@ -342,26 +335,28 @@ export default function ProofOfDeliveryPage() {
           >
             <thead>
               <tr>
-                <th>POD Number</th>
+                <th>ID</th>
                 <th>Delivery ID</th>
                 <th>Shipment ID</th>
-                <th>Customer</th>
+                <th>Receiver</th>
+                <th>Phone</th>
                 <th>Date</th>
-                <th>Received By</th>
-                <th>Status</th>
+                <th>Time</th>
+                <th>Remarks</th>
               </tr>
             </thead>
 
             <tbody>
               {pods.map((pod) => (
                 <tr key={pod.id}>
-                  <td>{pod.pod_number}</td>
+                  <td>{pod.id}</td>
                   <td>{pod.delivery_id}</td>
                   <td>{pod.shipment_id}</td>
-                  <td>{pod.customer_name || "-"}</td>
+                  <td>{pod.receiver_name || "-"}</td>
+                  <td>{pod.receiver_phone || "-"}</td>
                   <td>{pod.delivery_date || "-"}</td>
-                  <td>{pod.received_by || "-"}</td>
-                  <td>{pod.status}</td>
+                  <td>{pod.delivery_time || "-"}</td>
+                  <td>{pod.remarks || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -371,6 +366,7 @@ export default function ProofOfDeliveryPage() {
     </main>
   );
 }
+
 
 
               
