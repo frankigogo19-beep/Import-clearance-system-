@@ -9,6 +9,8 @@ const emptyForm = {
   shipment_id: "",
   truck_id: "",
   customer_id: "",
+  driver_name: "",
+  truck_number: "",
   pickup_location: "",
   delivery_location: "",
   pickup_date: "",
@@ -16,28 +18,27 @@ const emptyForm = {
   actual_delivery_date: "",
   delivery_date: "",
   status: "Pending",
-  driver_name: "",
-  truck_number: "",
   remarks: "",
   notes: "",
 };
 
 export default function DeliveriesPage() {
-  const [form, setForm] = useState(emptyForm);
   const [deliveries, setDeliveries] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [trucks, setTrucks] = useState([]);
   const [customers, setCustomers] = useState([]);
+
+  const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadAll();
+    loadData();
   }, []);
 
-  async function loadAll() {
+  async function loadData() {
     setLoading(true);
     setMessage("");
 
@@ -55,48 +56,52 @@ export default function DeliveriesPage() {
 
       supabase
         .from("companies")
-        .select("*")
-        .order("id", { ascending: false }),
+        .select("id, name")
+        .order("name", { ascending: true }),
 
       supabase
         .from("shipments")
-        .select("*")
+        .select("id, shipment_no")
         .order("id", { ascending: false }),
 
       supabase
         .from("trucks")
-        .select("*")
+        .select("id, registration_no, driver_name")
         .order("id", { ascending: false }),
 
       supabase
         .from("customers")
-        .select("*")
-        .order("id", { ascending: false }),
+        .select("id, name")
+        .order("name", { ascending: true }),
     ]);
 
     if (deliveriesResult.error) {
       setMessage(
         "Error loading deliveries: " + deliveriesResult.error.message
       );
-    } else {
-      setDeliveries(deliveriesResult.data || []);
     }
 
-    if (!companiesResult.error) {
-      setCompanies(companiesResult.data || []);
+    if (companiesResult.error) {
+      console.log("Companies error:", companiesResult.error.message);
     }
 
-    if (!shipmentsResult.error) {
-      setShipments(shipmentsResult.data || []);
+    if (shipmentsResult.error) {
+      console.log("Shipments error:", shipmentsResult.error.message);
     }
 
-    if (!trucksResult.error) {
-      setTrucks(trucksResult.data || []);
+    if (trucksResult.error) {
+      console.log("Trucks error:", trucksResult.error.message);
     }
 
-    if (!customersResult.error) {
-      setCustomers(customersResult.data || []);
+    if (customersResult.error) {
+      console.log("Customers error:", customersResult.error.message);
     }
+
+    setDeliveries(deliveriesResult.data || []);
+    setCompanies(companiesResult.data || []);
+    setShipments(shipmentsResult.data || []);
+    setTrucks(trucksResult.data || []);
+    setCustomers(customersResult.data || []);
 
     setLoading(false);
   }
@@ -104,76 +109,32 @@ export default function DeliveriesPage() {
   function handleChange(e) {
     const { name, value } = e.target;
 
-    setForm((prev) => ({
-      ...prev,
+    setForm((previous) => ({
+      ...previous,
       [name]: value,
     }));
-  }
 
-  function getCompanyName(companyId) {
-    const company = companies.find(
-      (item) => String(item.id) === String(companyId)
-    );
+    // Automatically fill truck number and driver name
+    // when a truck is selected.
+    if (name === "truck_id") {
+      const selectedTruck = trucks.find(
+        (truck) => String(truck.id) === String(value)
+      );
 
-    if (!company) return companyId || "-";
-
-    return (
-      company.company_name ||
-      company.name ||
-      company.business_name ||
-      `Company #${company.id}`
-    );
-  }
-
-  function getShipmentName(shipmentId) {
-    const shipment = shipments.find(
-      (item) => String(item.id) === String(shipmentId)
-    );
-
-    if (!shipment) return shipmentId || "-";
-
-    return (
-      shipment.shipment_no ||
-      shipment.shipment_number ||
-      shipment.bl_no ||
-      `Shipment #${shipment.id}`
-    );
-  }
-
-  function getTruckName(truckId) {
-    const truck = trucks.find(
-      (item) => String(item.id) === String(truckId)
-    );
-
-    if (!truck) return truckId || "-";
-
-    return (
-      truck.truck_number ||
-      truck.registration_number ||
-      truck.plate_number ||
-      truck.number ||
-      `Truck #${truck.id}`
-    );
-  }
-
-  function getCustomerName(customerId) {
-    const customer = customers.find(
-      (item) => String(item.id) === String(customerId)
-    );
-
-    if (!customer) return customerId || "-";
-
-    return (
-      customer.customer_name ||
-      customer.name ||
-      customer.company_name ||
-      customer.full_name ||
-      `Customer #${customer.id}`
-    );
+      if (selectedTruck) {
+        setForm((previous) => ({
+          ...previous,
+          truck_id: value,
+          truck_number: selectedTruck.registration_no || "",
+          driver_name: selectedTruck.driver_name || "",
+        }));
+      }
+    }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     setSaving(true);
     setMessage("");
 
@@ -196,23 +157,18 @@ export default function DeliveriesPage() {
         ? Number(form.customer_id)
         : null,
 
+      driver_name: form.driver_name || null,
+      truck_number: form.truck_number || null,
+
       pickup_location: form.pickup_location || null,
       delivery_location: form.delivery_location || null,
 
       pickup_date: form.pickup_date || null,
-
-      expected_delivery_date:
-        form.expected_delivery_date || null,
-
-      actual_delivery_date:
-        form.actual_delivery_date || null,
-
+      expected_delivery_date: form.expected_delivery_date || null,
+      actual_delivery_date: form.actual_delivery_date || null,
       delivery_date: form.delivery_date || null,
 
       status: form.status || "Pending",
-
-      driver_name: form.driver_name || null,
-      truck_number: form.truck_number || null,
 
       remarks: form.remarks || null,
       notes: form.notes || null,
@@ -224,74 +180,71 @@ export default function DeliveriesPage() {
 
     if (error) {
       setMessage("Error saving delivery: " + error.message);
-    } else {
-      setMessage("Delivery saved successfully.");
-
-      setForm({
-        ...emptyForm,
-        delivery_number: `DEL-${Date.now()}`,
-      });
-
-      await loadAll();
+      setSaving(false);
+      return;
     }
+
+    setMessage("Delivery saved successfully.");
+
+    setForm(emptyForm);
+
+    await loadData();
 
     setSaving(false);
   }
 
-  return (
-    <main
-      style={{
-        padding: "24px",
-        maxWidth: "1400px",
-        margin: "0 auto",
-      }}
-    >
-      <h1 style={{ marginBottom: "8px" }}>Deliveries</h1>
+  function getCompanyName(companyId) {
+    const company = companies.find(
+      (item) => String(item.id) === String(companyId)
+    );
 
-      <p style={{ marginBottom: "24px", color: "#666" }}>
+    return company?.name || "-";
+  }
+
+  function getShipmentName(shipmentId) {
+    const shipment = shipments.find(
+      (item) => String(item.id) === String(shipmentId)
+    );
+
+    return shipment?.shipment_no || "-";
+  }
+
+  function getCustomerName(customerId) {
+    const customer = customers.find(
+      (item) => String(item.id) === String(customerId)
+    );
+
+    return customer?.name || "-";
+  }
+
+  function getTruckName(truckId, truckNumber) {
+    const truck = trucks.find(
+      (item) => String(item.id) === String(truckId)
+    );
+
+    if (truck) {
+      return truck.registration_no || "-";
+    }
+
+    return truckNumber || "-";
+  }
+
+  return (
+    <main style={pageStyle}>
+      <h1>Deliveries</h1>
+
+      <p style={subtitleStyle}>
         Manage delivery orders, transport details and delivery status.
       </p>
 
-      {message && (
-        <div
-          style={{
-            padding: "12px 16px",
-            marginBottom: "20px",
-            borderRadius: "8px",
-            background: message.toLowerCase().includes("error")
-              ? "#ffe5e5"
-              : "#e7f7ed",
-            color: message.toLowerCase().includes("error")
-              ? "#b00020"
-              : "#137333",
-          }}
-        >
-          {message}
-        </div>
-      )}
-
-      <section
-        style={{
-          background: "#fff",
-          border: "1px solid #ddd",
-          borderRadius: "12px",
-          padding: "20px",
-          marginBottom: "30px",
-        }}
-      >
-        <h2 style={{ marginBottom: "20px" }}>Add Delivery</h2>
+      <section style={cardStyle}>
+        <h2>Add Delivery</h2>
 
         <form onSubmit={handleSubmit}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "16px",
-            }}
-          >
+          <div style={gridStyle}>
+
             <div>
-              <label>Delivery Number</label>
+              <label style={labelStyle}>Delivery Number</label>
               <input
                 type="text"
                 name="delivery_number"
@@ -303,7 +256,7 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Company</label>
+              <label style={labelStyle}>Company</label>
               <select
                 name="company_id"
                 value={form.company_id}
@@ -314,14 +267,14 @@ export default function DeliveriesPage() {
 
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>
-                    {getCompanyName(company.id)}
+                    {company.name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label>Shipment</label>
+              <label style={labelStyle}>Shipment</label>
               <select
                 name="shipment_id"
                 value={form.shipment_id}
@@ -332,14 +285,14 @@ export default function DeliveriesPage() {
 
                 {shipments.map((shipment) => (
                   <option key={shipment.id} value={shipment.id}>
-                    {getShipmentName(shipment.id)}
+                    {shipment.shipment_no}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label>Customer</label>
+              <label style={labelStyle}>Customer</label>
               <select
                 name="customer_id"
                 value={form.customer_id}
@@ -350,14 +303,14 @@ export default function DeliveriesPage() {
 
                 {customers.map((customer) => (
                   <option key={customer.id} value={customer.id}>
-                    {getCustomerName(customer.id)}
+                    {customer.name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label>Truck</label>
+              <label style={labelStyle}>Truck</label>
               <select
                 name="truck_id"
                 value={form.truck_id}
@@ -368,26 +321,29 @@ export default function DeliveriesPage() {
 
                 {trucks.map((truck) => (
                   <option key={truck.id} value={truck.id}>
-                    {getTruckName(truck.id)}
+                    {truck.registration_no}
+                    {truck.driver_name
+                      ? ` - ${truck.driver_name}`
+                      : ""}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label>Driver Name</label>
+              <label style={labelStyle}>Driver Name</label>
               <input
                 type="text"
                 name="driver_name"
                 value={form.driver_name}
                 onChange={handleChange}
-                placeholder="Driver full name"
+                placeholder="Driver name"
                 style={inputStyle}
               />
             </div>
 
             <div>
-              <label>Truck Number</label>
+              <label style={labelStyle}>Truck Number</label>
               <input
                 type="text"
                 name="truck_number"
@@ -399,19 +355,19 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Pickup Location</label>
+              <label style={labelStyle}>Pickup Location</label>
               <input
                 type="text"
                 name="pickup_location"
                 value={form.pickup_location}
                 onChange={handleChange}
-                placeholder="Pickup location"
+                placeholder="Dar es Salaam Port"
                 style={inputStyle}
               />
             </div>
 
             <div>
-              <label>Delivery Location</label>
+              <label style={labelStyle}>Delivery Location</label>
               <input
                 type="text"
                 name="delivery_location"
@@ -423,7 +379,7 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Pickup Date</label>
+              <label style={labelStyle}>Pickup Date</label>
               <input
                 type="date"
                 name="pickup_date"
@@ -434,7 +390,7 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Expected Delivery Date</label>
+              <label style={labelStyle}>Expected Delivery Date</label>
               <input
                 type="date"
                 name="expected_delivery_date"
@@ -445,7 +401,7 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Actual Delivery Date</label>
+              <label style={labelStyle}>Actual Delivery Date</label>
               <input
                 type="date"
                 name="actual_delivery_date"
@@ -456,7 +412,7 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Delivery Date</label>
+              <label style={labelStyle}>Delivery Date</label>
               <input
                 type="date"
                 name="delivery_date"
@@ -467,7 +423,7 @@ export default function DeliveriesPage() {
             </div>
 
             <div>
-              <label>Status</label>
+              <label style={labelStyle}>Status</label>
               <select
                 name="status"
                 value={form.status}
@@ -483,29 +439,30 @@ export default function DeliveriesPage() {
               </select>
             </div>
 
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label>Remarks</label>
-              <textarea
+            <div>
+              <label style={labelStyle}>Remarks</label>
+              <input
+                type="text"
                 name="remarks"
                 value={form.remarks}
                 onChange={handleChange}
-                placeholder="Delivery remarks"
-                rows="3"
-                style={textareaStyle}
+                placeholder="Remarks"
+                style={inputStyle}
               />
             </div>
 
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label>Notes</label>
-              <textarea
+            <div>
+              <label style={labelStyle}>Notes</label>
+              <input
+                type="text"
                 name="notes"
                 value={form.notes}
                 onChange={handleChange}
-                placeholder="Additional notes"
-                rows="3"
-                style={textareaStyle}
+                placeholder="Notes"
+                style={inputStyle}
               />
             </div>
+
           </div>
 
           <button
@@ -516,19 +473,16 @@ export default function DeliveriesPage() {
             {saving ? "Saving..." : "Save Delivery"}
           </button>
         </form>
+
+        {message && (
+          <p style={messageStyle}>
+            {message}
+          </p>
+        )}
       </section>
 
-      <section
-        style={{
-          background: "#fff",
-          border: "1px solid #ddd",
-          borderRadius: "12px",
-          padding: "20px",
-        }}
-      >
-        <h2 style={{ marginBottom: "20px" }}>
-          Delivery List
-        </h2>
+      <section style={cardStyle}>
+        <h2>Delivery List</h2>
 
         {loading ? (
           <p>Loading deliveries...</p>
@@ -536,13 +490,7 @@ export default function DeliveriesPage() {
           <p>No delivery records found.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: "1100px",
-              }}
-            >
+            <table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>ID</th>
@@ -581,8 +529,10 @@ export default function DeliveriesPage() {
                     </td>
 
                     <td style={tdStyle}>
-                      {delivery.truck_number ||
-                        getTruckName(delivery.truck_id)}
+                      {getTruckName(
+                        delivery.truck_id,
+                        delivery.truck_number
+                      )}
                     </td>
 
                     <td style={tdStyle}>
@@ -598,13 +548,11 @@ export default function DeliveriesPage() {
                     </td>
 
                     <td style={tdStyle}>
-                      {delivery.delivery_date ||
-                        delivery.actual_delivery_date ||
-                        "-"}
+                      {delivery.delivery_date || "-"}
                     </td>
 
                     <td style={tdStyle}>
-                      {delivery.status || "Pending"}
+                      {delivery.status || "-"}
                     </td>
                   </tr>
                 ))}
@@ -617,46 +565,70 @@ export default function DeliveriesPage() {
   );
 }
 
-const inputStyle = {
-  width: "100%",
-  padding: "10px 12px",
-  marginTop: "6px",
-  border: "1px solid #ccc",
-  borderRadius: "7px",
-  boxSizing: "border-box",
-  fontSize: "14px",
+const pageStyle = {
+  padding: "24px",
+  maxWidth: "1400px",
+  margin: "0 auto",
 };
 
-const textareaStyle = {
+const subtitleStyle = {
+  color: "#666",
+  marginBottom: "24px",
+};
+
+const cardStyle = {
+  background: "#fff",
+  padding: "24px",
+  borderRadius: "12px",
+  marginBottom: "24px",
+  boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+};
+
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+  gap: "16px",
+};
+
+const labelStyle = {
+  display: "block",
+  marginBottom: "6px",
+  fontWeight: "600",
+};
+
+const inputStyle = {
   width: "100%",
-  padding: "10px 12px",
-  marginTop: "6px",
+  padding: "10px",
   border: "1px solid #ccc",
-  borderRadius: "7px",
-  boxSizing: "border-box",
+  borderRadius: "6px",
   fontSize: "14px",
-  resize: "vertical",
+  boxSizing: "border-box",
 };
 
 const buttonStyle = {
   marginTop: "20px",
-  padding: "12px 24px",
+  padding: "12px 20px",
   border: "none",
-  borderRadius: "7px",
+  borderRadius: "6px",
   cursor: "pointer",
   fontWeight: "600",
+};
+
+const messageStyle = {
+  marginTop: "15px",
+  fontWeight: "600",
+};
+
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+  minWidth: "1100px",
 };
 
 const thStyle = {
   textAlign: "left",
   padding: "12px",
   borderBottom: "2px solid #ddd",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "12px",
-  borderBottom: "1px solid #eee",
   whiteSpace: "nowrap",
 };
 
