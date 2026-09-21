@@ -1,5 +1,3 @@
-
-            
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +7,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const [form, setForm] = useState({
@@ -16,8 +15,15 @@ export default function DocumentsPage() {
     document_type: "",
     document_number: "",
     shipment_id: "",
-    description: "",
+    container_id: "",
+    file_url: "",
+    file_path: "",
+    version: "1",
     status: "Pending",
+    issued_date: "",
+    expiry_date: "",
+    uploaded_by: "",
+    description: "",
   });
 
   useEffect(() => {
@@ -46,7 +52,7 @@ export default function DocumentsPage() {
     const { data, error } = await supabase
       .from("shipments")
       .select("id, shipment_no")
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false });
 
     if (error) {
       setMessage("Error loading shipments: " + error.message);
@@ -57,9 +63,11 @@ export default function DocumentsPage() {
   }
 
   function handleChange(e) {
+    const { name, value } = e.target;
+
     setForm({
       ...form,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   }
 
@@ -67,25 +75,43 @@ export default function DocumentsPage() {
     e.preventDefault();
     setMessage("");
 
-    if (!form.document_name) {
+    if (!form.document_name.trim()) {
       setMessage("Document Name is required.");
       return;
     }
 
-    const { error } = await supabase.from("documents").insert([
-      {
-        document_name: form.document_name,
-        document_type: form.document_type || null,
-        document_number: form.document_number || null,
-        shipment_id: form.shipment_id
-          ? Number(form.shipment_id)
-          : null,
-        description: form.description || null,
-        status: form.status,
-      },
-    ]);
+    setSaving(true);
+
+    const documentData = {
+      document_name: form.document_name.trim(),
+      document_type: form.document_type || null,
+      document_number: form.document_number || null,
+      shipment_id: form.shipment_id
+        ? Number(form.shipment_id)
+        : null,
+      container_id: form.container_id
+        ? Number(form.container_id)
+        : null,
+      file_url: form.file_url || null,
+      file_path: form.file_path || null,
+      version: form.version
+        ? Number(form.version)
+        : 1,
+      status: form.status || "Pending",
+      issued_date: form.issued_date || null,
+      expiry_date: form.expiry_date || null,
+      uploaded_by: form.uploaded_by || null,
+      description: form.description || null,
+    };
+
+    const { error } = await supabase
+      .from("documents")
+      .insert([documentData]);
+
+    setSaving(false);
 
     if (error) {
+      console.error(error);
       setMessage("Error saving document: " + error.message);
       return;
     }
@@ -97,8 +123,15 @@ export default function DocumentsPage() {
       document_type: "",
       document_number: "",
       shipment_id: "",
-      description: "",
+      container_id: "",
+      file_url: "",
+      file_path: "",
+      version: "1",
       status: "Pending",
+      issued_date: "",
+      expiry_date: "",
+      uploaded_by: "",
+      description: "",
     });
 
     loadDocuments();
@@ -122,7 +155,9 @@ export default function DocumentsPage() {
     >
       <h1>Documents</h1>
 
-      <p>Manage import, shipping and clearance documents.</p>
+      <p>
+        Manage import, shipping and clearance documents.
+      </p>
 
       {message && (
         <div
@@ -149,6 +184,7 @@ export default function DocumentsPage() {
 
         <form onSubmit={saveDocument}>
           <div style={{ display: "grid", gap: "15px" }}>
+
             <label>
               Document Name *
               <input
@@ -173,7 +209,9 @@ export default function DocumentsPage() {
                 <option value="Commercial Invoice">
                   Commercial Invoice
                 </option>
-                <option value="Packing List">Packing List</option>
+                <option value="Packing List">
+                  Packing List
+                </option>
                 <option value="Bill of Lading">
                   Bill of Lading
                 </option>
@@ -189,7 +227,12 @@ export default function DocumentsPage() {
                 <option value="Authorization Letter">
                   Authorization Letter
                 </option>
-                <option value="Other">Other</option>
+                <option value="Customs Declaration">
+                  Customs Declaration
+                </option>
+                <option value="Other">
+                  Other
+                </option>
               </select>
             </label>
 
@@ -199,7 +242,7 @@ export default function DocumentsPage() {
                 name="document_number"
                 value={form.document_number}
                 onChange={handleChange}
-                placeholder="Enter document number"
+                placeholder="e.g. INV-0001"
                 style={inputStyle}
               />
             </label>
@@ -212,27 +255,43 @@ export default function DocumentsPage() {
                 onChange={handleChange}
                 style={inputStyle}
               >
-                <option value="">Select Shipment</option>
+                <option value="">
+                  Select Shipment
+                </option>
 
                 {shipments.map((shipment) => (
                   <option
                     key={shipment.id}
                     value={shipment.id}
                   >
-                    {shipment.shipment_no || `Shipment #${shipment.id}`}
+                    {shipment.shipment_no
+                      ? `${shipment.shipment_no} (ID: ${shipment.id})`
+                      : `Shipment #${shipment.id}`}
                   </option>
                 ))}
               </select>
             </label>
 
             <label>
-              Description
-              <textarea
-                name="description"
-                value={form.description}
+              Container ID
+              <input
+                name="container_id"
+                type="number"
+                value={form.container_id}
                 onChange={handleChange}
-                placeholder="Document description"
-                rows="4"
+                placeholder="Optional container ID"
+                style={inputStyle}
+              />
+            </label>
+
+            <label>
+              Version
+              <input
+                name="version"
+                type="number"
+                min="1"
+                value={form.version}
+                onChange={handleChange}
                 style={inputStyle}
               />
             </label>
@@ -252,18 +311,87 @@ export default function DocumentsPage() {
               </select>
             </label>
 
+            <label>
+              Issued Date
+              <input
+                type="date"
+                name="issued_date"
+                value={form.issued_date}
+                onChange={handleChange}
+                style={inputStyle}
+              />
+            </label>
+
+            <label>
+              Expiry Date
+              <input
+                type="date"
+                name="expiry_date"
+                value={form.expiry_date}
+                onChange={handleChange}
+                style={inputStyle}
+              />
+            </label>
+
+            <label>
+              Uploaded By
+              <input
+                name="uploaded_by"
+                value={form.uploaded_by}
+                onChange={handleChange}
+                placeholder="Name of uploader"
+                style={inputStyle}
+              />
+            </label>
+
+            <label>
+              File URL
+              <input
+                name="file_url"
+                value={form.file_url}
+                onChange={handleChange}
+                placeholder="Optional file URL"
+                style={inputStyle}
+              />
+            </label>
+
+            <label>
+              File Path
+              <input
+                name="file_path"
+                value={form.file_path}
+                onChange={handleChange}
+                placeholder="Optional file path"
+                style={inputStyle}
+              />
+            </label>
+
+            <label>
+              Description
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Document description"
+                rows="4"
+                style={inputStyle}
+              />
+            </label>
+
             <button
               type="submit"
+              disabled={saving}
               style={{
                 padding: "12px 20px",
                 border: "none",
                 borderRadius: "8px",
-                cursor: "pointer",
+                cursor: saving ? "not-allowed" : "pointer",
                 fontWeight: "bold",
               }}
             >
-              Save Document
+              {saving ? "Saving..." : "Save Document"}
             </button>
+
           </div>
         </form>
       </section>
@@ -286,17 +414,25 @@ export default function DocumentsPage() {
             >
               <thead>
                 <tr>
+                  <th style={thStyle}>ID</th>
                   <th style={thStyle}>Document Name</th>
                   <th style={thStyle}>Type</th>
                   <th style={thStyle}>Number</th>
                   <th style={thStyle}>Shipment</th>
+                  <th style={thStyle}>Version</th>
                   <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Issued</th>
+                  <th style={thStyle}>Expiry</th>
                 </tr>
               </thead>
 
               <tbody>
                 {documents.map((doc) => (
                   <tr key={doc.id}>
+                    <td style={tdStyle}>
+                      {doc.id}
+                    </td>
+
                     <td style={tdStyle}>
                       {doc.document_name || "-"}
                     </td>
@@ -314,7 +450,19 @@ export default function DocumentsPage() {
                     </td>
 
                     <td style={tdStyle}>
+                      {doc.version || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
                       {doc.status || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {doc.issued_date || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {doc.expiry_date || "-"}
                     </td>
                   </tr>
                 ))}
